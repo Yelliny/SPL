@@ -266,20 +266,21 @@
 				"mov [car], rax\n"
 				(gen-cdr depth)
 				"mov [cdr], rax\n"
-				(gen-lower depth)
-				"mov [lower], rax\n"
+				(gen-null? depth)
+				"mov [null?], rax\n"
 				)))
-				
-(define gen-lower
+
+(define gen-null?
 	(lambda (depth)
-		(let* ((code-label (string-append "lower_" (number->string (get-inc-counter))))
+		(let* ((code-label (string-append "null_" (number->string (get-inc-counter))))
 		(str (string-append
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"our_lower\n"
+			"our_is_null\n"
 			 code-label "_end:\n\n")))
 		str)))
+
 
 (define gen-cdr
 	(lambda (depth)
@@ -634,7 +635,7 @@
 
 									"popall\n"
 									)))
-		(display `(asIF: ,lambda-pe num-of-params: ,num-of-reg-params)) (newline)
+		;(display `(asIF: ,lambda-pe num-of-params: ,num-of-reg-params)) (newline)
 		(gen-lambda lambda-pe depth #t fix-stack-code))))
 
 (define gen-lambda-simple
@@ -694,15 +695,15 @@
 		  			((equal? type "T_PAIR")
 		  				(string-append "dq MAKE_LITERAL_PAIR(" (list-ref details 1) ", " (list-ref details 2) ")"))
 		  			((equal? type "T_FRACTION")
-		  				(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
+		  				;(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
 		  				(string-append "dq MAKE_LITERAL_FRACTION(" (number->string (list-ref details 1)) " ," (number->string (list-ref details 2)) ")"))
 		  			((equal? type "T_VECTOR")
-              (if (equal? (cadr details) 0)
-                  "dq MAKE_LITERAL(T_VECTOR, 0)"
-                  (fold-left (lambda (init rest)
-                      (string-append init ", " rest)) 
-                      (string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2))
-                      (cdddr details))))
+		  				(fold-left (lambda (init rest)
+		  							(string-append init ", " rest)) 
+		  					(if (equal? (cadr details) 0)
+		  					"dq MAKE_LITERAL_VECTOR "
+		  					(string-append "MAKE_LITERAL_VECTOR " (list-ref details 2)))
+		  					(cdddr details)))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
 		  			((equal? type "T_SYMBOL")
