@@ -293,8 +293,6 @@
 			 code-label "_end:\n\n")))
 		str)))
 
-
-
 (define gen-plus
 	(lambda (depth)
 		(let* ((code-label (string-append "plus_" (number->string (get-inc-counter))))
