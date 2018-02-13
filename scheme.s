@@ -1676,6 +1676,7 @@ write_sob_if_not_void:
 	popall
 	leave
 	ret
+%endmacro
 
 %macro our_car 0
 
@@ -1706,6 +1707,135 @@ write_sob_if_not_void:
 	popall
 	leave
 	ret
+%endmacro
+
+%macro our_boolean? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_BOOL
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_char? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_CHAR
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_integer? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_INTEGER
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_pair? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_PAIR
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_number? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_INTEGER
+	je .ret_true
+	cmp r8, T_FRACTION
+	je .ret_true
+	
+	
+    mov rax, [L4]
+    jmp .end
+    
+    .ret_true:
+    mov rax, [L3]
+	
+    .end:
+	popall
+	leave
+	ret
+	
 %endmacro
 
 section .data

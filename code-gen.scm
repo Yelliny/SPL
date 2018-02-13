@@ -252,27 +252,77 @@
 (define gen-runtime
 	(lambda (depth)
 			(string-append 
-				(gen-plus depth)
-				"mov [plus], rax\n"
-				(gen-minus depth)
-				"mov [minus], rax\n"
-				(gen-cons depth)
-				"mov [cons], rax\n"
-				(gen-mult depth)
-				"mov [mult], rax\n"
-				(gen-divi depth)
-				"mov [divi], rax\n"
-				(gen-car depth)
-				"mov [car], rax\n"
-				(gen-cdr depth)
-				"mov [cdr], rax\n"
-				(gen-lower depth)
-				"mov [lower], rax\n"
-				(gen-greater depth)
-				"mov [greater], rax\n"
-				(gen-equali depth)
-				"mov [equali], rax\n"
+				(gen-plus depth) "mov [plus], rax\n"
+				(gen-minus depth) "mov [minus], rax\n"
+				(gen-cons depth) "mov [cons], rax\n"
+				(gen-mult depth) "mov [mult], rax\n"
+				(gen-divi depth) "mov [divi], rax\n"
+				(gen-car depth) "mov [car], rax\n"
+				(gen-cdr depth) "mov [cdr], rax\n"
+				(gen-lower depth) "mov [lower], rax\n"
+				(gen-greater depth) "mov [greater], rax\n"
+				(gen-equali depth) "mov [equali], rax\n"
+				(gen-boolean? depth) "mov [boolean?], rax\n"
+				(gen-char? depth) "mov [char?], rax\n"
+				(gen-integer? depth) "mov [integer?], rax\n"
+				(gen-pair? depth) "mov [pair?], rax\n"
+				(gen-number? depth) "mov [number?], rax\n"
 				)))
+				
+(define gen-number?
+	(lambda (depth)
+		(let* ((code-label (string-append "number?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_number?\n"
+			 code-label "_end:\n\n")))
+		str)))	
+				
+(define gen-pair?
+	(lambda (depth)
+		(let* ((code-label (string-append "pair?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_pair?\n"
+			 code-label "_end:\n\n")))
+		str)))					
+				
+(define gen-integer?
+	(lambda (depth)
+		(let* ((code-label (string-append "integer?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_integer?\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-char?
+	(lambda (depth)
+		(let* ((code-label (string-append "char?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_char?\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-boolean?
+	(lambda (depth)
+		(let* ((code-label (string-append "boolean?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_boolean?\n"
+			 code-label "_end:\n\n")))
+		str)))						
 				
 (define gen-equali
 	(lambda (depth)
