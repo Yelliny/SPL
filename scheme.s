@@ -829,234 +829,311 @@ write_sob_if_not_void:
 	pop rbx
 %endmacro
 
-%macro our_plus 0
-	push rbp
-	mov rbp, rsp
-	pushall
+%macro our_mult 0
+    push rbp 
+    mov rbp, rsp
+    pushall
+    
+    
+    mov rax, 0 ; r15 - counter, r14 - n
+    mov r15, 0
+    mov r14, [rbp + 3*8]
+    mov r10, 1
+    mov r11, 1 
+    
 
-	;;; r15 - counter, r14 - n
-	mov rax, 0
-	mov r15, 0
-	mov r14, [rbp + 3*8]
-	mov r10, 0
-	mov r11, 1
+    .loop: ; loop
+    cmp r14, r15
+    je .endloop
+    
+    mov r8, [rbp + 4*8 + r15*8] ; r8 - curr param, rbx - type
+    mov rbx, r8
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction
+    DATA_LOWER r8
+    mov r9, 1
+    jmp .after_all
+    
+    .fraction:
+    mov r9, r8
+    DATA_UPPER r8
+    DATA_LOWER r9
+    jmp .after_all
+    
+    .after_all:
+    mov rax, r8 ; r10 <- r10 * r8
+    mul r10
+    mov r10, rax
+    mov rax, r9 ; r11 <- r11 * r9
+    mul r11
+    mov r11, rax
+    
 
-	.loop:
-	cmp r14, r15
-	je .endloop
-	
-	;;; r8 - curr param , rbx-type
+    push r10 ; gcd r10/r11 , r12 - gcd result
+    push r11
+    call gcd
+    add rsp, 2*8
+    mov rdx, 0
+    mov r12, rax
+    mov rax, r10
+    div r12
+    mov r10, rax
+    mov rax, r11
+    mov rdx, 0
+    div r12
+    mov r11, rax
+    inc r15
+    jmp .loop
+    
+    .endloop:
+    mov rdx, 0
+    mov rax, r10
+    div r11
+    cmp rdx, 0
+    je .is_int
+    .is_frac:
+    make_lit_frac_runtime r10, r11
+    mov rax, r10
+    jmp .end
+    .is_int:
+    mov rdx, rax
+    make_lit_int_runtime rdx
+    mov rax, rdx
 
-	mov r8, [rbp + 4*8 + r15*8]
-	mov rbx, r8
-	TYPE rbx
-	cmp rbx, T_INTEGER
-	jne .fraction
-	DATA_LOWER r8
-	mov r9, 1
-	jmp .after_all
-
-	.fraction:
-	mov r9, r8
-	DATA_UPPER r8
-	DATA_LOWER r9
-	jmp .after_all
-
-
-	.after_all:
-	mov rax, r11
-	mul r9
-
-	;;; r13 - common denominator
-
-	mov r13, rax
-	mov rax, r10
-	mul r9
-	mov r10, rax
-	mov rax, r8
-	mul r11
-	add r10, rax
-
-	;;; r10 - final numerator before gcd
-	
-	mov r11, r13
-	
-	;;; r11 - final denominator before gcd
-
-	;;; reduce r10/r11 with gcd
-	push r10
-	push r11
-	call gcd
-	add rsp, 2*8
-	
-	;;; rbx - gcd of r10 and r11
-
-	mov rbx, rax
-
-	mov rdx, 0
-	;;; r10 - divide numerator by gcd
-	mov rax, r10
-	div rbx
-	mov r10, rax
-
-	;;; r11 - divide denominator by gcd
-	mov rax, r11
-	div rbx
-	mov r11, rax
-
-	inc r15
-	jmp .loop
-	.endloop:
-
-	mov rdx, 0
-	mov rax, r10
-	div r11
-	cmp rdx, 0
-	je .is_int
-	.is_frac:
-	make_lit_frac_runtime r10, r11
-	mov rax, r10
-	jmp .end
-	.is_int:
-	mov rdx, rax
-	make_lit_int_runtime rdx
-	mov rax, rdx
-
-	.end:
-	popall
-	leave
-	ret
-
+    .end:
+    popall
+    leave
+    ret
 %endmacro
 
-%macro our_minus 0
+%macro our_divi 0
+    push rbp 
+    mov rbp, rsp
+    pushall
+    
+    
+    mov rax, 0 ; r15 - counter, r14 - n
+    mov r14, [rbp + 3*8]
+    
+    ; if n == 1 , special case of one param
+    cmp r14, 1
+    je .one_param
+    
+    ; r10 - curr param, rbx - type
+    mov r10, [rbp + 4*8 + r15*8]
+    mov rbx, r10
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction_0
+    DATA_LOWER r10
+    mov r11, 1
+    mov r15, 1
+    jmp .loop
+    
+    .fraction_0:
+    mov r11, r10
+    DATA_UPPER r10
+    DATA_LOWER r11
+    mov r15, 1
+    jmp .loop
+    
+    .one_param:
+    mov r10, 1
+    mov r11, 1
+    
 
-	push rbp
-	mov rbp, rsp
-	pushall
+    .loop: ; loop
+    cmp r14, r15
+    je .endloop
+    
+    mov r8, [rbp + 4*8 + r15*8] ; r8 - curr param, rbx - type
+    mov rbx, r8
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction
+    mov r9, r8
+    DATA_LOWER r9
+    mov r8, 1
+    jmp .after_all
+    
+    .fraction:
+    mov r9, r8
+    DATA_UPPER r9
+    DATA_LOWER r8
+    jmp .after_all
+    
+    .after_all:
+    mov rax, r8 ; r10 <- r10 * r8
+    mul r10
+    mov r10, rax
+    mov rax, r9 ; r11 <- r11 * r9
+    mul r11
+    mov r11, rax
+    
 
-	;;; r15 - counter, r14 - n
-	mov rax, 0
-	mov r15, 0
-	mov r14, [rbp + 3*8]
+    push r10 ; gcd r10/r11 , r12 - gcd result
+    push r11
+    call gcd
+    add rsp, 2*8
+    mov rdx, 0
+    mov r12, rax
+    mov rax, r10
+    div r12
+    mov r10, rax
+    mov rax, r11
+    mov rdx, 0
+    div r12
+    mov r11, rax
+    inc r15
+    jmp .loop
+    
+    .endloop:
+    mov rdx, 0
+    mov rax, r10
+    div r11
+    cmp rdx, 0
+    je .is_int
+    .is_frac:
+    make_lit_frac_runtime r10, r11
+    mov rax, r10
+    jmp .end
+    .is_int:
+    mov rdx, rax
+    make_lit_int_runtime rdx
+    mov rax, rdx
 
-	;;; r10,r11 - first parameter
+    .end:
+    popall
+    leave
+    ret
+%endmacro
 
-	mov r10, [rbp + 4*8]
-	mov rbx, r10
-	TYPE rbx
-	cmp rbx, T_INTEGER
-	jne .fraction_1
-	DATA_LOWER r10
-	mov r11, 1
-	jmp .after_1
+%macro gen_closure 6
+    pushall
 
-	.fraction_1:
-	mov r11, r10
-	DATA_UPPER r10
-	DATA_LOWER r11
-	jmp .after_1
+    ; r12 = pointer to closure
+    mov rdi, 16
+    call malloc
+    mov r12, rax
 
-	.after_1:
+    ; r11 = address of new environment
+    mov rdi, %1
+    call malloc
+    mov r11, rax
 
-	inc r15
+    ; if depth == 0 build a closure with an empty env
+    mov r8, %2
 
-	;;; handle special case when n=1: return -1 * param
-	cmp r14, 1
-	jne .cont
+    cmp r8, 0
+    je .make_closure
+    ; r8 = n (number of parameters)
+    mov r8, [rsp + 8*10 + %3]
 
-	neg r10
-	jmp .endloop
+    ; r9 = size of extended environment (bytes)
+    mov rax, r8
+    mov r13, 8
+    mul r13
+    mov r9, rax
 
-	.cont:
+    ; r10 = address of extended environment 
+    mov rdi, r9
+    call malloc
+    mov r10, rax
 
-	.loop:
-	cmp r14, r15
-	je .endloop
-	
-	;;; r8 - curr param , rbx - type
+    ; build the extend env
+    cmp r8, 0
+    je .ext_env_done
 
-	mov r8, [rbp + 4*8 + r15*8]
-	mov rbx, r8
-	TYPE rbx
-	cmp rbx, T_INTEGER
-	jne .fraction_2
-	DATA_LOWER r8
-	mov r9, 1
-	jmp .after_2
+    ; r14 - counter. 
+    mov r14, 0
 
-	.fraction_2:
-	mov r9, r8
-	DATA_UPPER r8
-	DATA_LOWER r9
-	jmp .after_2
+    .ext_env:
+
+    ; r15 = current parameter
+    mov r15, [rsp + 8*10 + %4 + 8*r14]
+
+    ; insert curr param to extended env
+    mov [r10 + r14*8], r15 
+
+    ; check if reached end of params
+    inc r14
+    cmp r8, r14
+    jne .ext_env
+    
+    .ext_env_done:
+
+    ;put the extend env in the first cell of the new env
+    mov [r11], r10
+
+    ; copy the prev env to the new one
+    mov r14, 0
+    mov r15, 1
+
+    .cpy_prev_env:
+    
+    dec r14
+    cmp r14, %2
+    inc r14
+    je .cpy_prev_env_done
+
+    ; put the next element of prev env in r8
+    mov r8, [rsp + 8*10 + %5]
+    mov r8, [r8 + 8*r14]
 
 
-	.after_2:
+    ; put the next element of prev env in the next cell of the new env
+    mov [r11 + r15*8], r8
 
-	mov rax, r11
-	mul r9
+    inc r14
+    inc r15
 
-	;;; r13 - common denominator
 
-	mov r13, rax
-	mov rax, r10
-	mul r9
-	mov r10, rax
-	mov rax, r8
-	mul r11
-	sub r10, rax
+    jmp .cpy_prev_env
 
-	;;; r10 - final numerator before gcd
-	
-	mov r11, r13
-	
-	;;; r11 - final denominator before gcd
+    .cpy_prev_env_done:
 
-	;;; reduce r10/r11 with gcd
-	push r10
-	push r11
-	call gcd
-	add rsp, 2*8
-	
-	;;; rbx - gcd of r10 and r11
+    .make_closure:
 
-	mov rbx, rax
+    MAKE_LITERAL_CLOSURE r12, r11, %6
+    mov rax, [r12]
 
-	mov rdx, 0
-	;;; r10 - numerator divided by gcd
-	mov rax, r10
-	div rbx
-	mov r10, rax
+    popall
+%endmacro
 
-	;;; r11 - denominator divided by gcd
-	mov rax, r11
-	div rbx
-	mov r11, rax
+%macro our_cons 0
+    push rbp
+    mov rbp, rsp
+    pushall
 
-	inc r15
-	jmp .loop
-	.endloop:
+    ; r8 - first argument, r9 - second argument
+    mov r8, [rbp + 4*8]
+    mov r9, [rbp + 5*8]
 
-	mov rdx, 0
-	mov rax, r10
-	div r11
-	cmp rdx, 0
-	je .is_int
-	.is_frac:
-	make_lit_frac_runtime r10, r11
-	mov rax, r10
-	jmp .end
-	.is_int:
-	mov rdx, rax
-	make_lit_int_runtime rdx
-	mov rax, rdx
+    ; r12 - address of new pair
+    mov rdi, 8
+    call malloc
+    mov r12, rax
 
-	.end:
-	popall
-	leave
-	ret
+    ; r10 - address of first arg
+    mov rdi, 8
+    call malloc
+    mov r10, rax
+    mov [r10], r8
 
+    ; r11 - address of second arg
+    mov rdi, 8
+    call malloc
+    mov r11, rax
+    mov [r11], r9
+
+    make_lit_pair_runtime r12, r10, r11
+
+    mov rax, [r12]
+
+    popall
+    leave
+    ret
 %endmacro
 
 section .data
