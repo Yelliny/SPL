@@ -829,6 +829,236 @@ write_sob_if_not_void:
 	pop rbx
 %endmacro
 
+%macro our_plus 0
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r15 - counter, r14 - n
+	mov rax, 0
+	mov r15, 0
+	mov r14, [rbp + 3*8]
+	mov r10, 0
+	mov r11, 1
+
+	.loop:
+	cmp r14, r15
+	je .endloop
+	
+	;;; r8 - curr param , rbx-type
+
+	mov r8, [rbp + 4*8 + r15*8]
+	mov rbx, r8
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction
+	DATA_LOWER r8
+	mov r9, 1
+	jmp .after_all
+
+	.fraction:
+	mov r9, r8
+	DATA_UPPER r8
+	DATA_LOWER r9
+	jmp .after_all
+
+
+	.after_all:
+	mov rax, r11
+	mul r9
+
+	;;; r13 - common denominator
+
+	mov r13, rax
+	mov rax, r10
+	mul r9
+	mov r10, rax
+	mov rax, r8
+	mul r11
+	add r10, rax
+
+	;;; r10 - final numerator before gcd
+	
+	mov r11, r13
+	
+	;;; r11 - final denominator before gcd
+
+	;;; reduce r10/r11 with gcd
+	push r10
+	push r11
+	call gcd
+	add rsp, 2*8
+	
+	;;; rbx - gcd of r10 and r11
+
+	mov rbx, rax
+
+	mov rdx, 0
+	;;; r10 - divide numerator by gcd
+	mov rax, r10
+	div rbx
+	mov r10, rax
+
+	;;; r11 - divide denominator by gcd
+	mov rax, r11
+	div rbx
+	mov r11, rax
+
+	inc r15
+	jmp .loop
+	.endloop:
+
+	mov rdx, 0
+	mov rax, r10
+	div r11
+	cmp rdx, 0
+	je .is_int
+	.is_frac:
+	make_lit_frac_runtime r10, r11
+	mov rax, r10
+	jmp .end
+	.is_int:
+	mov rdx, rax
+	make_lit_int_runtime rdx
+	mov rax, rdx
+
+	.end:
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_minus 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r15 - counter, r14 - n
+	mov rax, 0
+	mov r15, 0
+	mov r14, [rbp + 3*8]
+
+	;;; r10,r11 - first parameter
+
+	mov r10, [rbp + 4*8]
+	mov rbx, r10
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction_1
+	DATA_LOWER r10
+	mov r11, 1
+	jmp .after_1
+
+	.fraction_1:
+	mov r11, r10
+	DATA_UPPER r10
+	DATA_LOWER r11
+	jmp .after_1
+
+	.after_1:
+
+	inc r15
+
+	;;; handle special case when n=1: return -1 * param
+	cmp r14, 1
+	jne .cont
+
+	neg r10
+	jmp .endloop
+
+	.cont:
+
+	.loop:
+	cmp r14, r15
+	je .endloop
+	
+	;;; r8 - curr param , rbx - type
+
+	mov r8, [rbp + 4*8 + r15*8]
+	mov rbx, r8
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction_2
+	DATA_LOWER r8
+	mov r9, 1
+	jmp .after_2
+
+	.fraction_2:
+	mov r9, r8
+	DATA_UPPER r8
+	DATA_LOWER r9
+	jmp .after_2
+
+
+	.after_2:
+
+	mov rax, r11
+	mul r9
+
+	;;; r13 - common denominator
+
+	mov r13, rax
+	mov rax, r10
+	mul r9
+	mov r10, rax
+	mov rax, r8
+	mul r11
+	sub r10, rax
+
+	;;; r10 - final numerator before gcd
+	
+	mov r11, r13
+	
+	;;; r11 - final denominator before gcd
+
+	;;; reduce r10/r11 with gcd
+	push r10
+	push r11
+	call gcd
+	add rsp, 2*8
+	
+	;;; rbx - gcd of r10 and r11
+
+	mov rbx, rax
+
+	mov rdx, 0
+	;;; r10 - numerator divided by gcd
+	mov rax, r10
+	div rbx
+	mov r10, rax
+
+	;;; r11 - denominator divided by gcd
+	mov rax, r11
+	div rbx
+	mov r11, rax
+
+	inc r15
+	jmp .loop
+	.endloop:
+
+	mov rdx, 0
+	mov rax, r10
+	div r11
+	cmp rdx, 0
+	je .is_int
+	.is_frac:
+	make_lit_frac_runtime r10, r11
+	mov rax, r10
+	jmp .end
+	.is_int:
+	mov rdx, rax
+	make_lit_int_runtime rdx
+	mov rax, rdx
+
+	.end:
+	popall
+	leave
+	ret
+
+%endmacro
+
 %macro our_mult 0
     push rbp 
     mov rbp, rsp
