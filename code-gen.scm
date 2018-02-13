@@ -262,7 +262,33 @@
 				"mov [mult], rax\n"
 				(gen-divi depth)
 				"mov [divi], rax\n"
+				(gen-car depth)
+				"mov [car], rax\n"
+				(gen-cdr depth)
+				"mov [cdr], rax\n"
 				)))
+
+(define gen-cdr
+	(lambda (depth)
+		(let* ((code-label (string-append "cdr_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_cdr\n"
+			 code-label "_end:\n\n")))
+		str)))
+
+(define gen-car
+	(lambda (depth)
+		(let* ((code-label (string-append "car_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_car\n"
+			 code-label "_end:\n\n")))
+		str)))
 
 (define gen-cons
 	(lambda (depth)
@@ -662,7 +688,7 @@
 		  							(string-append init ", " rest)) 
 		  					(if (equal? (cadr details) 0)
 		  					"dq MAKE_LITERAL_VECTOR "
-		  					(string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2)))
+		  					(string-append "MAKE_LITERAL_VECTOR " (list-ref details 2)))
 		  					(cdddr details)))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))

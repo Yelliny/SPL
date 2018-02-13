@@ -441,7 +441,7 @@ section .data
 .special:
 	db "#\x%02x", 0
 .regular:
-	db "#\\%c", 0
+	db "#\%c", 0
 
 write_sob_void:
 	push rbp
@@ -1053,6 +1053,449 @@ write_sob_if_not_void:
 	mov rax, rdx
 
 	.end:
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_mult 0
+    push rbp 
+    mov rbp, rsp
+    pushall
+    
+    
+    mov rax, 0 ; r15 - counter, r14 - n
+    mov r15, 0
+    mov r14, [rbp + 3*8]
+    mov r10, 1
+    mov r11, 1 
+    
+
+    .loop: ; loop
+    cmp r14, r15
+    je .endloop
+    
+    mov r8, [rbp + 4*8 + r15*8] ; r8 - curr param, rbx - type
+    mov rbx, r8
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction
+    DATA_LOWER r8
+    mov r9, 1
+    jmp .after_all
+    
+    .fraction:
+    mov r9, r8
+    DATA_UPPER r8
+    DATA_LOWER r9
+    jmp .after_all
+    
+    .after_all:
+    mov rax, r8 ; r10 <- r10 * r8
+    mul r10
+    mov r10, rax
+    mov rax, r9 ; r11 <- r11 * r9
+    mul r11
+    mov r11, rax
+    
+
+    push r10 ; gcd r10/r11 , r12 - gcd result
+    push r11
+    call gcd
+    add rsp, 2*8
+    mov rdx, 0
+    mov r12, rax
+    mov rax, r10
+    div r12
+    mov r10, rax
+    mov rax, r11
+    mov rdx, 0
+    div r12
+    mov r11, rax
+    inc r15
+    jmp .loop
+    
+    .endloop:
+    mov rdx, 0
+    mov rax, r10
+    div r11
+    cmp rdx, 0
+    je .is_int
+    .is_frac:
+    make_lit_frac_runtime r10, r11
+    mov rax, r10
+    jmp .end
+    .is_int:
+    mov rdx, rax
+    make_lit_int_runtime rdx
+    mov rax, rdx
+
+    .end:
+    popall
+    leave
+    ret
+%endmacro
+
+%macro our_divi 0
+    push rbp 
+    mov rbp, rsp
+    pushall
+    
+    
+    mov rax, 0 ; r15 - counter, r14 - n
+    mov r14, [rbp + 3*8]
+    
+    ; if n == 1 , special case of one param
+    cmp r14, 1
+    je .one_param
+    
+    ; r10 - curr param, rbx - type
+    mov r10, [rbp + 4*8 + r15*8]
+    mov rbx, r10
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction_0
+    DATA_LOWER r10
+    mov r11, 1
+    mov r15, 1
+    jmp .loop
+    
+    .fraction_0:
+    mov r11, r10
+    DATA_UPPER r10
+    DATA_LOWER r11
+    mov r15, 1
+    jmp .loop
+    
+    .one_param:
+    mov r10, 1
+    mov r11, 1
+    
+
+    .loop: ; loop
+    cmp r14, r15
+    je .endloop
+    
+    mov r8, [rbp + 4*8 + r15*8] ; r8 - curr param, rbx - type
+    mov rbx, r8
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction
+    mov r9, r8
+    DATA_LOWER r9
+    mov r8, 1
+    jmp .after_all
+    
+    .fraction:
+    mov r9, r8
+    DATA_UPPER r9
+    DATA_LOWER r8
+    jmp .after_all
+    
+    .after_all:
+    mov rax, r8 ; r10 <- r10 * r8
+    mul r10
+    mov r10, rax
+    mov rax, r9 ; r11 <- r11 * r9
+    mul r11
+    mov r11, rax
+    
+
+    push r10 ; gcd r10/r11 , r12 - gcd result
+    push r11
+    call gcd
+    add rsp, 2*8
+    mov rdx, 0
+    mov r12, rax
+    mov rax, r10
+    div r12
+    mov r10, rax
+    mov rax, r11
+    mov rdx, 0
+    div r12
+    mov r11, rax
+    inc r15
+    jmp .loop
+    
+    .endloop:
+    mov rdx, 0
+    mov rax, r10
+    div r11
+    cmp rdx, 0
+    je .is_int
+    .is_frac:
+    make_lit_frac_runtime r10, r11
+    mov rax, r10
+    jmp .end
+    .is_int:
+    mov rdx, rax
+    make_lit_int_runtime rdx
+    mov rax, rdx
+
+    .end:
+    popall
+    leave
+    ret
+%endmacro
+
+%macro gen_closure 6
+    pushall
+
+    ; r12 = pointer to closure
+    mov rdi, 16
+    call malloc
+    mov r12, rax
+
+    ; r11 = address of new environment
+    mov rdi, %1
+    call malloc
+    mov r11, rax
+
+    ; if depth == 0 build a closure with an empty env
+    mov r8, %2
+
+    cmp r8, 0
+    je .make_closure
+    ; r8 = n (number of parameters)
+    mov r8, [rsp + 8*10 + %3]
+
+    ; r9 = size of extended environment (bytes)
+    mov rax, r8
+    mov r13, 8
+    mul r13
+    mov r9, rax
+
+    ; r10 = address of extended environment 
+    mov rdi, r9
+    call malloc
+    mov r10, rax
+
+    ; build the extend env
+    cmp r8, 0
+    je .ext_env_done
+
+    ; r14 - counter. 
+    mov r14, 0
+
+    .ext_env:
+
+    ; r15 = current parameter
+    mov r15, [rsp + 8*10 + %4 + 8*r14]
+
+    ; insert curr param to extended env
+    mov [r10 + r14*8], r15 
+
+    ; check if reached end of params
+    inc r14
+    cmp r8, r14
+    jne .ext_env
+    
+    .ext_env_done:
+
+    ;put the extend env in the first cell of the new env
+    mov [r11], r10
+
+    ; copy the prev env to the new one
+    mov r14, 0
+    mov r15, 1
+
+    .cpy_prev_env:
+    
+    dec r14
+    cmp r14, %2
+    inc r14
+    je .cpy_prev_env_done
+
+    ; put the next element of prev env in r8
+    mov r8, [rsp + 8*10 + %5]
+    mov r8, [r8 + 8*r14]
+
+
+    ; put the next element of prev env in the next cell of the new env
+    mov [r11 + r15*8], r8
+
+    inc r14
+    inc r15
+
+
+    jmp .cpy_prev_env
+
+    .cpy_prev_env_done:
+
+    .make_closure:
+
+    MAKE_LITERAL_CLOSURE r12, r11, %6
+    mov rax, [r12]
+
+    popall
+%endmacro
+
+%macro our_cons 0
+    push rbp
+    mov rbp, rsp
+    pushall
+
+    ; r8 - first argument, r9 - second argument
+    mov r8, [rbp + 4*8]
+    mov r9, [rbp + 5*8]
+
+    ; r12 - address of new pair
+    mov rdi, 8
+    call malloc
+    mov r12, rax
+
+    ; r10 - address of first arg
+    mov rdi, 8
+    call malloc
+    mov r10, rax
+    mov [r10], r8
+
+    ; r11 - address of second arg
+    mov rdi, 8
+    call malloc
+    mov r11, rax
+    mov [r11], r9
+
+    make_lit_pair_runtime r12, r10, r11
+
+    mov rax, [r12]
+
+    popall
+    leave
+    ret
+%endmacro
+
+%macro our_lower 0
+    push rbp
+    mov rbp, rsp
+    pushall
+    
+    ;;; r15 - counter, r14 - n
+	mov rax, 0
+	mov r15, 1
+	mov r14, [rbp + 3*8]
+	
+	
+	mov r10, [rbp + 4*8]
+	mov rbx, r10
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction_0
+	DATA_LOWER r10
+	mov r11, 1
+	jmp .loop
+	
+	.fraction_0:
+	mov r11, r10
+	DATA_UPPER r10
+	DATA_LOWER r11
+
+	.loop:
+	cmp r14, r15
+	je .endloop
+	
+	;;; r8 - curr param , rbx-type
+
+	mov r8, [rbp + 4*8 + r15*8]
+	mov rbx, r8
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction
+	DATA_LOWER r8
+	mov r9, 1
+	jmp .after_all
+
+	.fraction:
+	mov r9, r8
+	DATA_UPPER r8
+	DATA_LOWER r9
+	jmp .after_all
+
+
+	.after_all:
+	mov rax, r11
+	mul r9
+
+	; r13 - common denominator
+    ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
+	mov r13, rax
+	mov rax, r10
+	mul r9
+	mov r10, rax
+	mov rax, r8
+	mul r11
+    mov r8, rax
+    cmp r10, r8
+    jge .ret_false
+    
+    mov r10, r8
+    mov r11, r9
+
+
+	;;; reduce r10/r11 with gcd
+	push r10
+	push r11
+	call gcd
+	add rsp, 2*8
+	
+	;;; rbx - gcd of r10 and r11
+
+	mov rbx, rax
+
+	mov rdx, 0
+	;;; r10 - divide numerator by gcd
+	mov rax, r10
+	div rbx
+	mov r10, rax
+
+	;;; r11 - divide denominator by gcd
+	mov rax, r11
+	div rbx
+	mov r11, rax
+
+	inc r15
+	jmp .loop
+	.endloop:
+    
+    mov rax, [L3]
+    jmp .end
+            
+	.ret_false:
+	mov rax, [L4]
+	
+	.end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_car 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - the pair (parameter)
+	mov r8, [rbp + 4*8]
+	CAR rax
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_cdr 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - the pair (parameter)
+	mov r8, [rbp + 4*8]
+	CDR rax
+
 	popall
 	leave
 	ret

@@ -21,7 +21,9 @@
 		("cons" NULL cons)
 		("minus" NULL -)
 		("mult" NULL *)
-    ("divi" NULL /)
+    	("divi" NULL /)
+    	("car" NULL car)
+    	("cdr" NULL cdr)
 		))
 (set! symbol-table 
 	'(
@@ -57,6 +59,13 @@
 			m))
 			(lambda (f) 'fail))))
 
+(define runtime-pipeline
+	(lambda (s)
+		(annotate-tc 
+		(pe->lex-pe 
+		(box-set 
+		(remove-applic-lambda-nil 
+		(parse s)))))))
 
 (define file->list
 	(lambda (in-file)
@@ -181,18 +190,29 @@
 	(lambda (program)
 		(map search-global-set program)))
 
+(define runtime-functions-scm-code
+	(lambda ()
+		(map runtime-pipeline 
+			(list 
+				'(define a 9)))))
+
 
 (define compile-scheme-file
 	(lambda (input output)
-		(let* ((program (pipeline (file->list input))))
-			(display program) (newline)
-			(build-constants-table program)
-			(build-globals-set-table program)
+		(let* ((file (file->list input))
+			(program (pipeline file))
+			(runtime (runtime-functions-scm-code))
+			(merged-program (append runtime program)))
+			(display runtime) (newline) (newline)
+			(display program) (newline) (newline)
+			(display merged-program) (newline) (newline)
+			(build-constants-table merged-program)
+			(build-globals-set-table merged-program)
 			;(display constants-table) (newline)
-			(display symbol-table) (newline)
+			;(display symbol-table) (newline)
 			;(display global-table) (newline)
 			(call-with-output-file output
 			(lambda (a)
 				(display
-					(overall-code-gen program)
+					(overall-code-gen merged-program)
 				a)) 'replace))))
