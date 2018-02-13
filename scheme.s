@@ -1470,6 +1470,214 @@ write_sob_if_not_void:
 	ret
 %endmacro
 
+%macro our_greater 0
+    push rbp
+    mov rbp, rsp
+    pushall
+    
+    ;;; r15 - counter, r14 - n
+	mov rax, 0
+	mov r15, 1
+	mov r14, [rbp + 3*8]
+	
+	
+	mov r10, [rbp + 4*8]
+	mov rbx, r10
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction_0
+	DATA_LOWER r10
+	mov r11, 1
+	jmp .loop
+	
+	.fraction_0:
+	mov r11, r10
+	DATA_UPPER r10
+	DATA_LOWER r11
+
+	.loop:
+	cmp r14, r15
+	je .endloop
+	
+	;;; r8 - curr param , rbx-type
+
+	mov r8, [rbp + 4*8 + r15*8]
+	mov rbx, r8
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction
+	DATA_LOWER r8
+	mov r9, 1
+	jmp .after_all
+
+	.fraction:
+	mov r9, r8
+	DATA_UPPER r8
+	DATA_LOWER r9
+	jmp .after_all
+
+
+	.after_all:
+	mov rax, r11
+	mul r9
+
+	; r13 - common denominator
+    ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
+	mov r13, rax
+	mov rax, r10
+	mul r9
+	mov r10, rax
+	mov rax, r8
+	mul r11
+    mov r8, rax
+    cmp r10, r8
+    jle .ret_false
+    
+    mov r10, r8
+    mov r11, r9
+
+
+	;;; reduce r10/r11 with gcd
+	push r10
+	push r11
+	call gcd
+	add rsp, 2*8
+	
+	;;; rbx - gcd of r10 and r11
+
+	mov rbx, rax
+
+	mov rdx, 0
+	;;; r10 - divide numerator by gcd
+	mov rax, r10
+	div rbx
+	mov r10, rax
+
+	;;; r11 - divide denominator by gcd
+	mov rax, r11
+	div rbx
+	mov r11, rax
+
+	inc r15
+	jmp .loop
+	.endloop:
+    
+    mov rax, [L3]
+    jmp .end
+            
+	.ret_false:
+	mov rax, [L4]
+	
+	.end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_equali 0
+    push rbp
+    mov rbp, rsp
+    pushall
+    
+    ;;; r15 - counter, r14 - n
+	mov rax, 0
+	mov r15, 1
+	mov r14, [rbp + 3*8]
+	
+	
+	mov r10, [rbp + 4*8]
+	mov rbx, r10
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction_0
+	DATA_LOWER r10
+	mov r11, 1
+	jmp .loop
+	
+	.fraction_0:
+	mov r11, r10
+	DATA_UPPER r10
+	DATA_LOWER r11
+
+	.loop:
+	cmp r14, r15
+	je .endloop
+	
+	;;; r8 - curr param , rbx-type
+
+	mov r8, [rbp + 4*8 + r15*8]
+	mov rbx, r8
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction
+	DATA_LOWER r8
+	mov r9, 1
+	jmp .after_all
+
+	.fraction:
+	mov r9, r8
+	DATA_UPPER r8
+	DATA_LOWER r9
+	jmp .after_all
+
+
+	.after_all:
+	mov rax, r11
+	mul r9
+
+	; r13 - common denominator
+    ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
+	mov r13, rax
+	mov rax, r10
+	mul r9
+	mov r10, rax
+	mov rax, r8
+	mul r11
+    mov r8, rax
+    cmp r10, r8
+    jne .ret_false
+    
+    mov r10, r8
+    mov r11, r9
+
+
+	;;; reduce r10/r11 with gcd
+	push r10
+	push r11
+	call gcd
+	add rsp, 2*8
+	
+	;;; rbx - gcd of r10 and r11
+
+	mov rbx, rax
+
+	mov rdx, 0
+	;;; r10 - divide numerator by gcd
+	mov rax, r10
+	div rbx
+	mov r10, rax
+
+	;;; r11 - divide denominator by gcd
+	mov rax, r11
+	div rbx
+	mov r11, rax
+
+	inc r15
+	jmp .loop
+	.endloop:
+    
+    mov rax, [L3]
+    jmp .end
+            
+	.ret_false:
+	mov rax, [L4]
+	
+	.end:
+	popall
+	leave
+	ret
+%endmacro
+
 section .data
 .newline:
 	db CHAR_NEWLINE, 0

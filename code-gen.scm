@@ -264,7 +264,33 @@
 				"mov [divi], rax\n"
 				(gen-lower depth)
 				"mov [lower], rax\n"
+				(gen-greater depth)
+				"mov [greater], rax\n"
+				(gen-equali depth)
+				"mov [equali], rax\n"
 				)))
+				
+(define gen-equali
+	(lambda (depth)
+		(let* ((code-label (string-append "equali_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_equali\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-greater
+	(lambda (depth)
+		(let* ((code-label (string-append "greater_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_greater\n"
+			 code-label "_end:\n\n")))
+		str)))
 				
 (define gen-lower
 	(lambda (depth)
@@ -501,6 +527,7 @@
 			(string-append
 				"# ----- gen-applic " num-of-params " -----\n" 
 				 rator-code
+				 "pushall\n"
 				; put the pointer to rator's closure SOB in r8
 				"mov r8, rax\n"
 				"mov r9, r8\n"
@@ -520,16 +547,17 @@
 
 				"call r8\n"
 
-				"mov r8, [rsp + 1*8]\n"
+				"mov r10, [rsp + 1*8]\n"
 				; pop env, pop n, pop params
 				"add rsp, 8*2\n"
-				"mov r9, rax\n"
+				"mov r11, rax\n"
 				"mov rax, 8\n"
-				"mul r8\n"
+				"mul r10\n"
 				"add rsp, rax\n"
-				"mov rax, r9\n"
+				"mov rax, r11\n"
 				; pop 0 
 				"add rsp, 8\n"
+				"popall\n"
 				))))
 
 (define gen-lambda-opt
@@ -671,12 +699,12 @@
 		  				(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
 		  				(string-append "dq MAKE_LITERAL_FRACTION(" (number->string (list-ref details 1)) " ," (number->string (list-ref details 2)) ")"))
 		  			((equal? type "T_VECTOR")
-              (if (equal? (cadr details) 0)
-                  "dq MAKE_LITERAL(T_VECTOR, 0)"
-                  (fold-left (lambda (init rest)
-                      (string-append init ", " rest)) 
-                      (string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2))
-                      (cdddr details))))
+                        (if (equal? (cadr details) 0)
+                            "dq MAKE_LITERAL(T_VECTOR, 0)"
+                            (fold-left (lambda (init rest)
+                                (string-append init ", " rest)) 
+                                (string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2))
+                                (cdddr details))))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
 		  			((equal? type "T_SYMBOL")
