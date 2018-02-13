@@ -248,6 +248,8 @@
 			(string-append 
 				(gen-plus depth)
 				"mov [plus], rax\n"
+				(gen-minus depth)
+				"mov [minus], rax\n"
 				(gen-cons depth)
 				"mov [cons], rax\n")))
 
@@ -293,6 +295,17 @@
 			 code-label "_end:\n\n")))
 		str)))
 
+(define gen-minus
+	(lambda (depth)
+		(let* ((code-label (string-append "minus_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_minus    \n\n"
+			 code-label "_end:\n\n")))
+		str)))
+
 (define gen-plus
 	(lambda (depth)
 		(let* ((code-label (string-append "plus_" (number->string (get-inc-counter))))
@@ -300,95 +313,7 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"push rbp\n"
-			"mov rbp, rsp\n"
-			"pushall\n"
-
-			; r15 - counter, r14 - n
-			"\nmov rax, 0\n"
-			"mov r15, 0\n"
-			"mov r14, [rbp + 3*8]\n"
-			"mov r10, 0\n"
-			"mov r11, 1\n"
-
-			; loop
-			"\n.loop:\n"
-			"cmp r14, r15\n"
-			"je .endloop\n"
-			; r8 - curr param , rbx-type
-			"mov r8, [rbp + 4*8 + r15*8]\n"
-			"mov rbx, r8\n"
-			"TYPE rbx\n"
-			"cmp rbx, T_INTEGER\n"
-			"jne .fraction\n"
-			"DATA_LOWER r8\n"
-			"mov r9, 1\n"
-			"jmp .after_all\n\n"
-
-			".fraction:\n"
-			"mov r9, r8\n"
-			"DATA_UPPER r8\n"
-			"DATA_LOWER r9\n"
-			"jmp .after_all\n\n"
-
-
-			"\n\n.after_all:\n"
-			"mov rax, r11\n"
-			"mul r9\n"
-
-			; r13 - common denominator
-			"mov r13, rax\n"
-			"mov rax, r10\n"
-			"mul r9\n"
-			"mov r10, rax\n"
-			"mov rax, r8\n"
-			"mul r11\n"
-			"add r10, rax\n"
-			; r10 - final numerator before gcd
-			"mov r11, r13\n"
-			; r11 - final denominator before gcd
-
-			; reduce r10/r11 with gcd
-			"push r10\n"
-			"push r11\n"
-			"call gcd\n"
-			"add rsp, 2*8\n"
-			; rbx - gcd of r10 and r11
-			"mov rbx, rax\n"
-
-			"mov rdx, 0\n"
-			; r10 - divide numerator by gcd
-			"mov rax, r10\n"
-			"div rbx\n"
-			"mov r10, rax\n"
-
-			; r11 - divide denominator by gcd
-			"mov rax, r11\n"
-			"div rbx\n"
-			"mov r11, rax\n"
-
-			"inc r15\n"
-			"jmp .loop\n"
-			"\n.endloop:\n"
-
-			"mov rdx, 0\n"
-			"mov rax, r10\n"
-			"div r11\n"
-			"cmp rdx, 0\n"
-			"je .is_int\n"
-			"\n.is_frac:\n"
-			"make_lit_frac_runtime r10, r11\n"
-			"mov rax, r10\n"
-			"jmp .end\n"
-			"\n.is_int:\n"
-			"mov rdx, rax\n"
-			"make_lit_int_runtime rdx\n"
-			"mov rax, rdx\n"
-
-			".end:\n"
-			"popall\n"
-			"leave\n"
-			"ret\n\n"
+			"our_plus\n"
 			 code-label "_end:\n\n")))
 		str)))
 
@@ -695,7 +620,7 @@
 			(params_offset (number->string (* 8 4)))
 			(prev_env_offset (number->string (* 8 2)))
 		(str (string-append 
-			"# ----- gen-lambda depth: " (number->string depth) " -----\n" 
+			"# ----- gen-lambda depth: " counter " -----\n" 
 			"pushall\n"
 
 			; r12 = pointer to closure

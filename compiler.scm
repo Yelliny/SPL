@@ -19,6 +19,7 @@
 	'(
 		("plus" NULL +)
 		("cons" NULL cons)
+		("minus" NULL -)
 		))
 (set! symbol-table 
 	'(
@@ -193,8 +194,3 @@
 				(display
 					(overall-code-gen program)
 				a)) 'replace))))
-
-#| (build-constants-table 
-	(pipeline (file->list "a.scm")))
-
-(display constants-table) |#
