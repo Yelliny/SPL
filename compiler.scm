@@ -19,8 +19,10 @@
 	'(
 		("plus" NULL +)
 		("cons" NULL cons)
+		("minus" NULL -)
 		("mult" NULL *)
         ("divi" NULL /)
+        ("lower" NULL <)
 		))
 (set! symbol-table 
 	'(
@@ -121,8 +123,11 @@
 			((vector? const)
 				(if (not (member const vals))
 					(let ((elem-labels (map insert-constant (vector->list const))))
-						(insert-to-table const `(T_VECTOR ,(vector-length const) ,@elem-labels)))
-					(list-ref labels (index-of vals const))))
+                        (if (null? elem-labels)
+                        (insert-to-table const `(T_VECTOR ,(vector-length const) "0"))
+						(insert-to-table const `(T_VECTOR ,(vector-length const) ,@elem-labels))))
+					(list-ref labels (index-of vals const))
+					))
 			((string? const)
 				(if (not (member const vals))
 					(let ((chars-ascii (map char->integer (string->list const))))
@@ -188,15 +193,10 @@
 			(build-constants-table program)
 			(build-globals-set-table program)
 			;(display constants-table) (newline)
-			(display symbol-table) (newline)
+			;(display symbol-table) (newline)
 			;(display global-table) (newline)
 			(call-with-output-file output
 			(lambda (a)
 				(display
 					(overall-code-gen program)
 				a)) 'replace))))
-
-#| (build-constants-table 
-	(pipeline (file->list "a.scm")))
-
-(display constants-table) |#

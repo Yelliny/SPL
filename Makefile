@@ -8,3 +8,5 @@ all:
 
 clean:
 	rm -f a.s a.o a
+	
+#  nasm -f elf64 a.s -o a.o && gcc -m64 -o a a.o
