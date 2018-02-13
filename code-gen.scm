@@ -390,7 +390,7 @@
 
 
 
-(define gen-plusi
+(define gen-plusio
 	(lambda (depth)
 		(let* ((code-label (string-append "plus_" (number->string (get-inc-counter))))
 		(str (string-append
