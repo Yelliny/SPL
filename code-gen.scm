@@ -258,8 +258,8 @@
 				"mov [cons], rax\n"
 				(gen-mult depth)
 				"mov [mult], rax\n"
-			;	(gen-divi depth)
-				;"mov [divi], rax\n"
+				(gen-divi depth)
+				"mov [divi], rax\n"
 				)))
 
 (define gen-cons
@@ -269,131 +269,22 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"push rbp\n"
-			"mov rbp, rsp\n"
-			"pushall\n"
-
-			; r8 - first argument, r9 - second argument
-			"mov r8, [rbp + 4*8]\n"
-			"mov r9, [rbp + 5*8]\n"
-
-			; r12 - address of new pair
-			"mov rdi, 8\n"
-			"call malloc\n"
-			"mov r12, rax\n"
-
-			; r10 - address of first arg
-			"mov rdi, 8\n"
-			"call malloc\n"
-			"mov r10, rax\n"
-			"mov [r10], r8\n"
-
-			; r11 - address of second arg
-			"mov rdi, 8\n"
-			"call malloc\n"
-			"mov r11, rax\n"
-			"mov [r11], r9\n"
-
-			"make_lit_pair_runtime r12, r10, r11\n"
-
-			"mov rax, [r12]\n"
-
-			"popall\n"
-			"leave\n"
-			"ret\n\n"
+			"our_cons\n"
 			 code-label "_end:\n\n")))
 		str)))
 		
 		
-;; (define gen-divi
-;;     (lambda (depth)
-;;         (let* ((code-label (string-append "mult_" (number->string (get-inc-counter))))
-;;         (str (string-append
-;;             (gen-closure-code depth code-label)
-;;             "jmp " code-label "_end\n"
-;;             "\n" code-label ":\n"
-;;             "push rbp\n"
-;;             "mov rbp, rsp\n"
-;;             "pushall\n"
-;;             
-;;             ; r15 - counter, r14 - n
-;;             "\nmov rax, 0\n"
-;;             "mov r15, 0\n"
-;;             "mov r14, [rbp + 3*8]\n"
-;;             "mov r10, 1\n"
-;;             "mov r11, 1\n"
-;;             
-;;             ; loop
-;;             "\n.loop:\n"
-;;             "cmp r14, r15\n"
-;;             "je .endloop\n"
-;;             
-;;             ; r8 - curr param, rbx - type
-;;             "mov r8, [rbp + 4*8 + r15*8]\n"
-;;             "mov rbx, r8\n"
-;;             "TYPE rbx\n"
-;;             "cmp rbx, T_INTEGER\n"
-;;             "jne .fraction\n"
-;;             "mov r9, "
-;;             "DATA_LOWER r8\n"
-;;             "mov r9, 1\n"
-;;             "jmp .after_all\n\n"
-;;             
-;;             ".fraction:\n"
-;;             "mov r9, r8\n"
-;;             "DATA_UPPER r8\n"
-;;             "DATA_LOWER r9\n"
-;;             "jmp .after_all\n\n"
-;;             
-;;             "\n\n.after_all:\n"
-;;             ; r10 <- r10 * r8
-;;             "mov rax, r8\n"
-;;             "mul r10\n"
-;;             "mov r10, rax\n"
-;;             ; r11 <- r11 * r9
-;;             "mov rax, r9\n"
-;;             "mul r11\n"
-;;             "mov r11, rax\n\n"
-;;             
-;;             ; gcd r10/r11 , r12 - gcd result
-;;             "push r10\n"
-;;             "push r11\n"
-;;             "call gcd\n"
-;;             "add rsp, 2*8\n"
-;;             "mov rdx, 0\n"
-;;             "mov r12, rax\n"
-;;             "mov rax, r10\n"
-;;             "div r12\n"
-;;             "mov r10, rax\n"
-;;             "mov rax, r11\n"
-;;             "mov rdx, 0\n"
-;;             "div r12\n"
-;;             "mov r11, rax\n\n"
-;;             "inc r15\n"
-;;             "jmp .loop\n\n"
-;;             
-;;             ".endloop:\n"
-;;             "mov rdx, 0\n"
-;; 			"mov rax, r10\n"
-;; 			"div r11\n"
-;; 			"cmp rdx, 0\n"
-;; 			"je .is_int\n"
-;; 			"\n.is_frac:\n"
-;; 			"make_lit_frac_runtime r10, r11\n"
-;; 			"mov rax, r10\n"
-;; 			"jmp .end\n"
-;; 			"\n.is_int:\n"
-;; 			"mov rdx, rax\n"
-;; 			"make_lit_int_runtime rdx\n"
-;; 			"mov rax, rdx\n"
-;; 
-;; 			".end:\n"
-;; 			"popall\n"
-;; 			"leave\n"
-;; 			"ret\n\n"
-;; 			 code-label "_end:\n\n"
-;; 			 )))
-;;         str)))
+(define gen-divi
+    (lambda (depth)
+        (let* ((code-label (string-append "divi_" (number->string (get-inc-counter))))
+        (str (string-append
+            (gen-closure-code depth code-label)
+            "jmp " code-label "_end\n"
+            "\n" code-label ":\n"
+            "our_divi\n"
+			 code-label "_end:\n\n"
+			 )))
+        str)))
 		
 
 (define gen-mult
@@ -401,7 +292,6 @@
         (let* ((code-label (string-append "mult_" (number->string (get-inc-counter))))
         (str (string-append
             (gen-closure-code depth code-label)
-            "# ------- mult --------------------------\n"
             "jmp " code-label "_end\n"
             "\n" code-label ":\n"
             "our_mult\n"

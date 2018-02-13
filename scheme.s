@@ -907,6 +907,108 @@ write_sob_if_not_void:
     ret
 %endmacro
 
+%macro our_divi 0
+    push rbp 
+    mov rbp, rsp
+    pushall
+    
+    
+    mov rax, 0 ; r15 - counter, r14 - n
+    mov r14, [rbp + 3*8]
+    
+    ; if n == 1 , special case of one param
+    cmp r14, 1
+    je .one_param
+    
+    ; r10 - curr param, rbx - type
+    mov r10, [rbp + 4*8 + r15*8]
+    mov rbx, r10
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction_0
+    DATA_LOWER r10
+    mov r11, 1
+    mov r15, 1
+    jmp .loop
+    
+    .fraction_0:
+    mov r11, r10
+    DATA_UPPER r10
+    DATA_LOWER r11
+    mov r15, 1
+    jmp .loop
+    
+    .one_param:
+    mov r10, 1
+    mov r11, 1
+    
+
+    .loop: ; loop
+    cmp r14, r15
+    je .endloop
+    
+    mov r8, [rbp + 4*8 + r15*8] ; r8 - curr param, rbx - type
+    mov rbx, r8
+    TYPE rbx
+    cmp rbx, T_INTEGER
+    jne .fraction
+    mov r9, r8
+    DATA_LOWER r9
+    mov r8, 1
+    jmp .after_all
+    
+    .fraction:
+    mov r9, r8
+    DATA_UPPER r9
+    DATA_LOWER r8
+    jmp .after_all
+    
+    .after_all:
+    mov rax, r8 ; r10 <- r10 * r8
+    mul r10
+    mov r10, rax
+    mov rax, r9 ; r11 <- r11 * r9
+    mul r11
+    mov r11, rax
+    
+
+    push r10 ; gcd r10/r11 , r12 - gcd result
+    push r11
+    call gcd
+    add rsp, 2*8
+    mov rdx, 0
+    mov r12, rax
+    mov rax, r10
+    div r12
+    mov r10, rax
+    mov rax, r11
+    mov rdx, 0
+    div r12
+    mov r11, rax
+    inc r15
+    jmp .loop
+    
+    .endloop:
+    mov rdx, 0
+    mov rax, r10
+    div r11
+    cmp rdx, 0
+    je .is_int
+    .is_frac:
+    make_lit_frac_runtime r10, r11
+    mov rax, r10
+    jmp .end
+    .is_int:
+    mov rdx, rax
+    make_lit_int_runtime rdx
+    mov rax, rdx
+
+    .end:
+    popall
+    leave
+    ret
+%endmacro
+
 %macro gen_closure 6
     pushall
 
@@ -997,6 +1099,41 @@ write_sob_if_not_void:
     mov rax, [r12]
 
     popall
+%endmacro
+
+%macro our_cons 0
+    push rbp
+    mov rbp, rsp
+    pushall
+
+    ; r8 - first argument, r9 - second argument
+    mov r8, [rbp + 4*8]
+    mov r9, [rbp + 5*8]
+
+    ; r12 - address of new pair
+    mov rdi, 8
+    call malloc
+    mov r12, rax
+
+    ; r10 - address of first arg
+    mov rdi, 8
+    call malloc
+    mov r10, rax
+    mov [r10], r8
+
+    ; r11 - address of second arg
+    mov rdi, 8
+    call malloc
+    mov r11, rax
+    mov [r11], r9
+
+    make_lit_pair_runtime r12, r10, r11
+
+    mov rax, [r12]
+
+    popall
+    leave
+    ret
 %endmacro
 
 section .data
