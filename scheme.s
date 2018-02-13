@@ -1470,6 +1470,38 @@ write_sob_if_not_void:
 	ret
 %endmacro
 
+%macro our_car 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - the pair (parameter)
+	mov r8, [rbp + 4*8]
+	CAR rax
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_cdr 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - the pair (parameter)
+	mov r8, [rbp + 4*8]
+	CDR rax
+
+	popall
+	leave
+	ret
+
+%endmacro
+
 section .data
 .newline:
 	db CHAR_NEWLINE, 0
