@@ -99,12 +99,6 @@
 				(display `(code-gen not recognize pe ,pe)) (newline)
 				"code-gen does not recognize you\n")))))
 
-#| (define gen-symbol-table
-	(lambda ()
-		(fold-left (lambda (init curr)
-						(string-append 
-							""))
-		"section .data\nsymbol_table:\n"))) |#
 
 (define gen-box-get
 	(lambda (pe depth)
@@ -255,9 +249,7 @@
 				(gen-plus depth)
 				"mov [plus], rax\n"
 				(gen-cons depth)
-				"mov [cons], rax\n"
-				(gen-mult depth)
-				"mov [mult], rax\n"))
+				"mov [cons], rax\n")))
 
 (define gen-cons
 	(lambda (depth)
@@ -300,97 +292,10 @@
 			"ret\n\n"
 			 code-label "_end:\n\n")))
 		str)))
-		
-
-(define gen-mult
-    (lambda (depth)
-        (let* ((code-label (string-append "mult_" (number->string (get-inc-counter))))
-        (str (string-append
-            (gen-closure-code depth code-label)
-            "jmp " code-label "_end\n"
-            "\n" code-label ":\n"
-            "push rbp\n"
-            "mov rbp, rsp\n"
-            "pushall\n"
-            
-            ; r15 - counter, r14 - n
-            "\nmov rax, 0\n"
-            "mov r15, 0\n"
-            "mov r14, [rbp + 3*8]\n"
-            "mov r10, 1\n"
-            "mov r11, 1\n"
-            
-            ; loop
-            "\n.loop:\n"
-            "cmp r14, r15\n"
-            "je .endloop\n"
-            
-            ; r8 - curr param, rbx - type
-            "mov r8, [rbp + 4*8 + r15*8]\n"
-            "mov rbx, r8\n"
-            "TYPE rbx\n"
-            "cmp rbx, T_INTEGER\n"
-            "jne .fraction\n"
-            "DATA_LOWER r8\n"
-            "mov r9, 1\n"
-            "jmp .after_all\n\n"
-            
-            ".fraction:\n"
-            "mov r9, r8\n"
-            "DATA_LOWER r8\n"
-            "DATA_UPPER r9\n"
-            "jmp .after_all\n\n"
-            
-            "\n\n.after_all:\n"
-            ; r10 <- r10 * r8
-            "mov rax, r8\n"
-            "mul r10\n"
-            "mov r10, rax\n"
-            ; r11 <- r11 * r9
-            "mov rax, r9\n"
-            "mul r11\n"
-            "mov r11, rax\n\n"
-            
-            ; gcd r10/r11
-            "push r10\n"
-            "push r11\n"
-            "call gcd\n"
-            "add rsp, 2*8\n"
-            "mov rdx, 0\n"
-            "mov r12, rax\n"
-            "div r10\n"
-            "mov r10, rax\n"
-            "mov rax, r12\n"
-            "div r11\n"
-            "mov r11, rax\n\n"
-            "inc r15\n"
-            "jmp .loop\n\n"
-            
-            ".end_loop:\n"
-            "mov rdx, 0\n"
-			"mov rax, r10\n"
-			"div r11\n"
-			"cmp rdx, 0\n"
-			"je .is_int\n"
-			"\n.is_frac:\n"
-			"make_lit_frac_runtime r10, r11\n"
-			"mov rax, r10\n"
-			"jmp .end\n"
-			"\n.is_int:\n"
-			"mov rdx, rax\n"
-			"make_lit_int_runtime rdx\n"
-			"mov rax, rdx\n"
-
-			".end:\n"
-			"popall\n"
-			"leave\n"
-			"ret\n\n"
-			 code-label "_end:\n\n"
-			 ))))))
 
 
 
-(define gen-plusi
+(define gen-plus
 	(lambda (depth)
 		(let* ((code-label (string-append "plus_" (number->string (get-inc-counter))))
 		(str (string-append
@@ -441,9 +346,29 @@
 			"mov rax, r8\n"
 			"mul r11\n"
 			"add r10, rax\n"
-			; r10 - final numerator
+			; r10 - final numerator before gcd
 			"mov r11, r13\n"
-			; r11 - denominator
+			; r11 - final denominator before gcd
+
+			; reduce r10/r11 with gcd
+			"push r10\n"
+			"push r11\n"
+			"call gcd\n"
+			"add rsp, 2*8\n"
+			; rbx - gcd of r10 and r11
+			"mov rbx, rax\n"
+
+			"mov rdx, 0\n"
+			; r10 - divide numerator by gcd
+			"mov rax, r10\n"
+			"div rbx\n"
+			"mov r10, rax\n"
+
+			; r11 - divide denominator by gcd
+			"mov rax, r11\n"
+			"div rbx\n"
+			"mov r11, rax\n"
+
 			"inc r15\n"
 			"jmp .loop\n"
 			"\n.endloop:\n"
@@ -773,16 +698,7 @@
 			(prev_env_offset (number->string (* 8 2)))
 		(str (string-append 
 			"# ----- gen-lambda depth: " (number->string depth) " -----\n" 
-			"push rdi\n"
-			"push rcx\n"
-			"push r8\n"
-			"push r9\n"
-			"push r10\n"
-			"push r11\n"
-			"push r12\n"
-			"push r13\n"
-			"push r14\n"
-			"push r15\n\n"
+			"pushall\n"
 
 			; r12 = pointer to closure
 			"mov rdi, 16\n"
@@ -868,16 +784,7 @@
 			"MAKE_LITERAL_CLOSURE r12, r11, " code-label "\n"
 			"mov rax, [r12]\n\n"
 
-			"pop r15\n"
-			"pop r14\n"
-			"pop r13\n"
-			"pop r12\n"
-			"pop r11\n"
-			"pop r10\n"
-			"pop r9\n"
-			"pop r8\n"
-			"pop rcx\n"
-			"pop rdi\n\n"
+			"popall\n"
 			)))
 		str)))
 
