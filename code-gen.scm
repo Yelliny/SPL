@@ -257,7 +257,10 @@
 				(gen-cons depth)
 				"mov [cons], rax\n"
 				(gen-mult depth)
-				"mov [mult], rax\n")))
+				"mov [mult], rax\n"
+			;	(gen-divi depth)
+				;"mov [divi], rax\n"
+				)))
 
 (define gen-cons
 	(lambda (depth)
@@ -301,92 +304,107 @@
 			 code-label "_end:\n\n")))
 		str)))
 		
+		
+;; (define gen-divi
+;;     (lambda (depth)
+;;         (let* ((code-label (string-append "mult_" (number->string (get-inc-counter))))
+;;         (str (string-append
+;;             (gen-closure-code depth code-label)
+;;             "jmp " code-label "_end\n"
+;;             "\n" code-label ":\n"
+;;             "push rbp\n"
+;;             "mov rbp, rsp\n"
+;;             "pushall\n"
+;;             
+;;             ; r15 - counter, r14 - n
+;;             "\nmov rax, 0\n"
+;;             "mov r15, 0\n"
+;;             "mov r14, [rbp + 3*8]\n"
+;;             "mov r10, 1\n"
+;;             "mov r11, 1\n"
+;;             
+;;             ; loop
+;;             "\n.loop:\n"
+;;             "cmp r14, r15\n"
+;;             "je .endloop\n"
+;;             
+;;             ; r8 - curr param, rbx - type
+;;             "mov r8, [rbp + 4*8 + r15*8]\n"
+;;             "mov rbx, r8\n"
+;;             "TYPE rbx\n"
+;;             "cmp rbx, T_INTEGER\n"
+;;             "jne .fraction\n"
+;;             "mov r9, "
+;;             "DATA_LOWER r8\n"
+;;             "mov r9, 1\n"
+;;             "jmp .after_all\n\n"
+;;             
+;;             ".fraction:\n"
+;;             "mov r9, r8\n"
+;;             "DATA_UPPER r8\n"
+;;             "DATA_LOWER r9\n"
+;;             "jmp .after_all\n\n"
+;;             
+;;             "\n\n.after_all:\n"
+;;             ; r10 <- r10 * r8
+;;             "mov rax, r8\n"
+;;             "mul r10\n"
+;;             "mov r10, rax\n"
+;;             ; r11 <- r11 * r9
+;;             "mov rax, r9\n"
+;;             "mul r11\n"
+;;             "mov r11, rax\n\n"
+;;             
+;;             ; gcd r10/r11 , r12 - gcd result
+;;             "push r10\n"
+;;             "push r11\n"
+;;             "call gcd\n"
+;;             "add rsp, 2*8\n"
+;;             "mov rdx, 0\n"
+;;             "mov r12, rax\n"
+;;             "mov rax, r10\n"
+;;             "div r12\n"
+;;             "mov r10, rax\n"
+;;             "mov rax, r11\n"
+;;             "mov rdx, 0\n"
+;;             "div r12\n"
+;;             "mov r11, rax\n\n"
+;;             "inc r15\n"
+;;             "jmp .loop\n\n"
+;;             
+;;             ".endloop:\n"
+;;             "mov rdx, 0\n"
+;; 			"mov rax, r10\n"
+;; 			"div r11\n"
+;; 			"cmp rdx, 0\n"
+;; 			"je .is_int\n"
+;; 			"\n.is_frac:\n"
+;; 			"make_lit_frac_runtime r10, r11\n"
+;; 			"mov rax, r10\n"
+;; 			"jmp .end\n"
+;; 			"\n.is_int:\n"
+;; 			"mov rdx, rax\n"
+;; 			"make_lit_int_runtime rdx\n"
+;; 			"mov rax, rdx\n"
+;; 
+;; 			".end:\n"
+;; 			"popall\n"
+;; 			"leave\n"
+;; 			"ret\n\n"
+;; 			 code-label "_end:\n\n"
+;; 			 )))
+;;         str)))
+		
 
 (define gen-mult
     (lambda (depth)
         (let* ((code-label (string-append "mult_" (number->string (get-inc-counter))))
         (str (string-append
             (gen-closure-code depth code-label)
+            "# ------- mult --------------------------\n"
             "jmp " code-label "_end\n"
             "\n" code-label ":\n"
-            "push rbp\n"
-            "mov rbp, rsp\n"
-            "pushall\n"
-            
-            ; r15 - counter, r14 - n
-            "\nmov rax, 0\n"
-            "mov r15, 0\n"
-            "mov r14, [rbp + 3*8]\n"
-            "mov r10, 1\n"
-            "mov r11, 1\n"
-            
-            ; loop
-            "\n.loop:\n"
-            "cmp r14, r15\n"
-            "je .endloop\n"
-            
-            ; r8 - curr param, rbx - type
-            "mov r8, [rbp + 4*8 + r15*8]\n"
-            "mov rbx, r8\n"
-            "TYPE rbx\n"
-            "cmp rbx, T_INTEGER\n"
-            "jne .fraction\n"
-            "DATA_LOWER r8\n"
-            "mov r9, 1\n"
-            "jmp .after_all\n\n"
-            
-            ".fraction:\n"
-            "mov r9, r8\n"
-            "DATA_UPPER r8\n"
-            "DATA_LOWER r9\n"
-            "jmp .after_all\n\n"
-            
-            "\n\n.after_all:\n"
-            ; r10 <- r10 * r8
-            "mov rax, r8\n"
-            "mul r10\n"
-            "mov r10, rax\n"
-            ; r11 <- r11 * r9
-            "mov rax, r9\n"
-            "mul r11\n"
-            "mov r11, rax\n\n"
-            
-            ; gcd r10/r11 , r12 - gcd result
-            "push r10\n"
-            "push r11\n"
-            "call gcd\n"
-            "add rsp, 2*8\n"
-            "mov rdx, 0\n"
-            "mov r12, rax\n"
-            "mov rax, r10\n"
-            "div r12\n"
-            "mov r10, rax\n"
-            "mov rax, r11\n"
-            "mov rdx, 0\n"
-            "div r12\n"
-            "mov r11, rax\n\n"
-            "inc r15\n"
-            "jmp .loop\n\n"
-            
-            ".endloop:\n"
-            "mov rdx, 0\n"
-			"mov rax, r10\n"
-			"div r11\n"
-			"cmp rdx, 0\n"
-			"je .is_int\n"
-			"\n.is_frac:\n"
-			"make_lit_frac_runtime r10, r11\n"
-			"mov rax, r10\n"
-			"jmp .end\n"
-			"\n.is_int:\n"
-			"mov rdx, rax\n"
-			"make_lit_int_runtime rdx\n"
-			"mov rax, rdx\n"
-
-			".end:\n"
-			"popall\n"
-			"leave\n"
-			"ret\n\n"
+            "our_mult\n"
 			 code-label "_end:\n\n"
 			 )))
         str)))
@@ -774,113 +792,11 @@
 			(counter (number->string (get-inc-counter)))
 			(params_offset (number->string (* 8 4)))
 			(prev_env_offset (number->string (* 8 2)))
+			(str-depth (number->string depth))
 		(str (string-append 
-			"# ----- gen-lambda depth: " (number->string depth) " -----\n" 
-			"push rdi\n"
-			"push rcx\n"
-			"push r8\n"
-			"push r9\n"
-			"push r10\n"
-			"push r11\n"
-			"push r12\n"
-			"push r13\n"
-			"push r14\n"
-			"push r15\n\n"
-
-			; r12 = pointer to closure
-			"mov rdi, 16\n"
-			"call malloc\n"
-			"mov r12, rax\n"
-
-			; r11 = address of new environment
-			"mov rdi, " env_size "\n"
-			"call malloc\n"
-			"mov r11, rax\n"
-
-			; if depth == 0 build a closure with an empty env
-			"mov r8, " (number->string depth) "\n"
-
-			"cmp r8, 0\n"
-			"je make_closure_" counter "\n"
-			; r8 = n (number of parameters)
-			"mov r8, [rsp + 8*10 + " n_offset "]\n"
-
-			; r9 = size of extended environment (bytes)
-			"mov rax, r8\n"
-			"mov r13, 8\n"
-			"mul r13\n"
-			"mov r9, rax\n"
-
-			; r10 = address of extended environment 
-			"mov rdi, r9\n"
-			"call malloc\n"
-			"mov r10, rax\n"
-
-			; build the extend env
-			"cmp r8, 0\n"
-			"je ext_env_done_" counter "\n"
-
-			; r14 - counter. 
-			"mov r14, 0\n"
-
-			"\next_env_" counter ":\n\n"
-
-			; r15 = current parameter
-			"mov r15, [rsp + 8*10 +" params_offset "+ 8*r14]\n"
-
-			; insert curr param to extended env
-			"mov [r10 + r14*8], r15\n" 
-
-			; check if reached end of params
-			"inc r14\n"
-			"cmp r8, r14\n"
-			"jne ext_env_" counter "\n"
-			
-			"\next_env_done_" counter ":\n\n"
-
-			;put the extend env in the first cell of the new env
-			"mov [r11], r10\n"
-
-			; copy the prev env to the new one
-			"mov r14, 0\n"
-			"mov r15, 1\n"
-
-			"\ncpy_prev_env_" counter ":\n\n"
-
-			"cmp r14, " (number->string (- depth 1)) "\n"
-			"je cpy_prev_env_done_" counter "\n"
-
-			; put the next element of prev env in r8
-			"mov r8, [rsp + 8*10 + " prev_env_offset "]\n"
-			"mov r8, [r8 + 8*r14]\n"
-
-
-			; put the next element of prev env in the next cell of the new env
-			"mov [r11 + r15*8], r8\n"
-
-			"inc r14\n"
-			"inc r15\n"
-
-
-			"jmp cpy_prev_env_" counter "\n"
-
-			"\ncpy_prev_env_done_" counter ":\n\n"
-
-			"\nmake_closure_" counter ":\n\n"
-
-			"MAKE_LITERAL_CLOSURE r12, r11, " code-label "\n"
-			"mov rax, [r12]\n\n"
-
-			"pop r15\n"
-			"pop r14\n"
-			"pop r13\n"
-			"pop r12\n"
-			"pop r11\n"
-			"pop r10\n"
-			"pop r9\n"
-			"pop r8\n"
-			"pop rcx\n"
-			"pop rdi\n\n"
+			"# ----- gen-lambda-" counter " depth: " str-depth " -----\n"
+			"closure_" counter ":\n\n"
+			"gen_closure " env_size ", " str-depth ", " n_offset ", " params_offset ", " prev_env_offset ", " code-label "\n"
 			)))
 		str)))
 

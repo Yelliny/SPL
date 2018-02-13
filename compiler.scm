@@ -20,6 +20,7 @@
 		("plus" NULL +)
 		("cons" NULL cons)
 		("mult" NULL *)
+      ;  ("divi" NULL /)
 		))
 (set! symbol-table 
 	'(
