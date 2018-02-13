@@ -99,6 +99,12 @@
 				(display `(code-gen not recognize pe ,pe)) (newline)
 				"code-gen does not recognize you\n")))))
 
+#| (define gen-symbol-table
+	(lambda ()
+		(fold-left (lambda (init curr)
+						(string-append 
+							""))
+		"section .data\nsymbol_table:\n"))) |#
 
 (define gen-box-get
 	(lambda (pe depth)
@@ -251,7 +257,12 @@
 				(gen-minus depth)
 				"mov [minus], rax\n"
 				(gen-cons depth)
-				"mov [cons], rax\n")))
+				"mov [cons], rax\n"
+				(gen-mult depth)
+				"mov [mult], rax\n"
+				(gen-divi depth)
+				"mov [divi], rax\n"
+				)))
 
 (define gen-cons
 	(lambda (depth)
@@ -260,40 +271,37 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"push rbp\n"
-			"mov rbp, rsp\n"
-			"pushall\n"
-
-			; r8 - first argument, r9 - second argument
-			"mov r8, [rbp + 4*8]\n"
-			"mov r9, [rbp + 5*8]\n"
-
-			; r12 - address of new pair
-			"mov rdi, 8\n"
-			"call malloc\n"
-			"mov r12, rax\n"
-
-			; r10 - address of first arg
-			"mov rdi, 8\n"
-			"call malloc\n"
-			"mov r10, rax\n"
-			"mov [r10], r8\n"
-
-			; r11 - address of second arg
-			"mov rdi, 8\n"
-			"call malloc\n"
-			"mov r11, rax\n"
-			"mov [r11], r9\n"
-
-			"make_lit_pair_runtime r12, r10, r11\n"
-
-			"mov rax, [r12]\n"
-
-			"popall\n"
-			"leave\n"
-			"ret\n\n"
+			"our_cons\n"
 			 code-label "_end:\n\n")))
 		str)))
+		
+		
+(define gen-divi
+    (lambda (depth)
+        (let* ((code-label (string-append "divi_" (number->string (get-inc-counter))))
+        (str (string-append
+            (gen-closure-code depth code-label)
+            "jmp " code-label "_end\n"
+            "\n" code-label ":\n"
+            "our_divi\n"
+			 code-label "_end:\n\n"
+			 )))
+        str)))
+		
+
+(define gen-mult
+    (lambda (depth)
+        (let* ((code-label (string-append "mult_" (number->string (get-inc-counter))))
+        (str (string-append
+            (gen-closure-code depth code-label)
+            "jmp " code-label "_end\n"
+            "\n" code-label ":\n"
+            "our_mult\n"
+			 code-label "_end:\n\n"
+			 )))
+        str)))
+
+
 
 (define gen-minus
 	(lambda (depth)
@@ -619,95 +627,11 @@
 			(counter (number->string (get-inc-counter)))
 			(params_offset (number->string (* 8 4)))
 			(prev_env_offset (number->string (* 8 2)))
-		(str (string-append 
-			"# ----- gen-lambda depth: " counter " -----\n" 
-			"pushall\n"
-
-			; r12 = pointer to closure
-			"mov rdi, 16\n"
-			"call malloc\n"
-			"mov r12, rax\n"
-
-			; r11 = address of new environment
-			"mov rdi, " env_size "\n"
-			"call malloc\n"
-			"mov r11, rax\n"
-
-			; if depth == 0 build a closure with an empty env
-			"mov r8, " (number->string depth) "\n"
-
-			"cmp r8, 0\n"
-			"je make_closure_" counter "\n"
-			; r8 = n (number of parameters)
-			"mov r8, [rsp + 8*10 + " n_offset "]\n"
-
-			; r9 = size of extended environment (bytes)
-			"mov rax, r8\n"
-			"mov r13, 8\n"
-			"mul r13\n"
-			"mov r9, rax\n"
-
-			; r10 = address of extended environment 
-			"mov rdi, r9\n"
-			"call malloc\n"
-			"mov r10, rax\n"
-
-			; build the extend env
-			"cmp r8, 0\n"
-			"je ext_env_done_" counter "\n"
-
-			; r14 - counter. 
-			"mov r14, 0\n"
-
-			"\next_env_" counter ":\n\n"
-
-			; r15 = current parameter
-			"mov r15, [rsp + 8*10 +" params_offset "+ 8*r14]\n"
-
-			; insert curr param to extended env
-			"mov [r10 + r14*8], r15\n" 
-
-			; check if reached end of params
-			"inc r14\n"
-			"cmp r8, r14\n"
-			"jne ext_env_" counter "\n"
-			
-			"\next_env_done_" counter ":\n\n"
-
-			;put the extend env in the first cell of the new env
-			"mov [r11], r10\n"
-
-			; copy the prev env to the new one
-			"mov r14, 0\n"
-			"mov r15, 1\n"
-
-			"\ncpy_prev_env_" counter ":\n\n"
-
-			"cmp r14, " (number->string (- depth 1)) "\n"
-			"je cpy_prev_env_done_" counter "\n"
-
-			; put the next element of prev env in r8
-			"mov r8, [rsp + 8*10 + " prev_env_offset "]\n"
-			"mov r8, [r8 + 8*r14]\n"
-
-
-			; put the next element of prev env in the next cell of the new env
-			"mov [r11 + r15*8], r8\n"
-
-			"inc r14\n"
-			"inc r15\n"
-
-
-			"jmp cpy_prev_env_" counter "\n"
-
-			"\ncpy_prev_env_done_" counter ":\n\n"
-
-			"\nmake_closure_" counter ":\n\n"
-
-			"MAKE_LITERAL_CLOSURE r12, r11, " code-label "\n"
-			"mov rax, [r12]\n\n"
-
-			"popall\n"
+			(str-depth (number->string depth))
+		(str (string-append
+			"# ----- gen-lambda-" counter " depth: " str-depth " -----\n"
+			"closure_" counter ":\n\n"
+			"gen_closure " env_size ", " str-depth ", " n_offset ", " params_offset ", " prev_env_offset ", " code-label "\n"
 			)))
 		str)))
 
