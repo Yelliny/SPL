@@ -257,7 +257,7 @@
 				(gen-cons depth)
 				"mov [cons], rax\n"
 				(gen-mult depth)
-				"mov [mult], rax\n"))
+				"mov [mult], rax\n")))
 
 (define gen-cons
 	(lambda (depth)
@@ -337,8 +337,8 @@
             
             ".fraction:\n"
             "mov r9, r8\n"
-            "DATA_LOWER r8\n"
-            "DATA_UPPER r9\n"
+            "DATA_UPPER r8\n"
+            "DATA_LOWER r9\n"
             "jmp .after_all\n\n"
             
             "\n\n.after_all:\n"
@@ -351,22 +351,24 @@
             "mul r11\n"
             "mov r11, rax\n\n"
             
-            ; gcd r10/r11
+            ; gcd r10/r11 , r12 - gcd result
             "push r10\n"
             "push r11\n"
             "call gcd\n"
             "add rsp, 2*8\n"
             "mov rdx, 0\n"
             "mov r12, rax\n"
-            "div r10\n"
+            "mov rax, r10\n"
+            "div r12\n"
             "mov r10, rax\n"
-            "mov rax, r12\n"
-            "div r11\n"
+            "mov rax, r11\n"
+            "mov rdx, 0\n"
+            "div r12\n"
             "mov r11, rax\n\n"
             "inc r15\n"
             "jmp .loop\n\n"
             
-            ".end_loop:\n"
+            ".endloop:\n"
             "mov rdx, 0\n"
 			"mov rax, r10\n"
 			"div r11\n"
@@ -386,7 +388,8 @@
 			"leave\n"
 			"ret\n\n"
 			 code-label "_end:\n\n"
-			 ))))))
+			 )))
+        str)))
 
 
 
