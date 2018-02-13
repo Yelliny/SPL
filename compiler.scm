@@ -21,8 +21,8 @@
 		("cons" NULL cons)
 		("minus" NULL -)
 		("mult" NULL *)
-        ("divi" NULL /)
-        ("lower" NULL <)
+    ("divi" NULL /)
+    ("lower" NULL <)
 		))
 (set! symbol-table 
 	'(
