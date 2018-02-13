@@ -262,7 +262,20 @@
 				"mov [mult], rax\n"
 				(gen-divi depth)
 				"mov [divi], rax\n"
+				(gen-lower depth)
+				"mov [lower], rax\n"
 				)))
+				
+(define gen-lower
+	(lambda (depth)
+		(let* ((code-label (string-append "lower_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_lower\n"
+			 code-label "_end:\n\n")))
+		str)))
 
 (define gen-cons
 	(lambda (depth)
@@ -658,12 +671,12 @@
 		  				(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
 		  				(string-append "dq MAKE_LITERAL_FRACTION(" (number->string (list-ref details 1)) " ," (number->string (list-ref details 2)) ")"))
 		  			((equal? type "T_VECTOR")
-		  				(fold-left (lambda (init rest)
-		  							(string-append init ", " rest)) 
-		  					(if (equal? (cadr details) 0)
-		  					"dq MAKE_LITERAL_VECTOR "
-		  					(string-append "MAKE_LITERAL_VECTOR " (list-ref details 2)))
-		  					(cdddr details)))
+              (if (equal? (cadr details) 0)
+                  "dq MAKE_LITERAL(T_VECTOR, 0)"
+                  (fold-left (lambda (init rest)
+                      (string-append init ", " rest)) 
+                      (string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2))
+                      (cdddr details))))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
 		  			((equal? type "T_SYMBOL")
