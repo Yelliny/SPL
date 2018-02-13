@@ -26,6 +26,8 @@
     ("cdr" NULL cdr)
     ("divi" NULL /)
     ("lower" NULL <)
+    ("greater" NULL >)
+    ("equali" NULL =)
 		))
 (set! symbol-table 
 	'(
