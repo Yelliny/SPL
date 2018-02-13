@@ -662,7 +662,7 @@
 		  							(string-append init ", " rest)) 
 		  					(if (equal? (cadr details) 0)
 		  					"dq MAKE_LITERAL_VECTOR "
-		  					(string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2)))
+		  					(string-append "MAKE_LITERAL_VECTOR " (list-ref details 2)))
 		  					(cdddr details)))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
