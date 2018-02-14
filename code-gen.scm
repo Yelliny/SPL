@@ -115,18 +115,18 @@
 					"# ----- gen-box-get -----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 2*8 + 1*8]\n"
+					"mov r8, [rbp + 2*8]\n"
 					"mov r8, [r8 + 8*" loc-lambda"]\n"
 					"mov r8, [r8 + 8*" loc-param "]\n"
 					"mov rax, [r8]\n"
 					"pop r8\n\n"
 					))
-			(let ((loc (caddr pe)))
+			(let ((loc (number->string (caddr pe))))
 				(string-append
 					"# ----- gen-box-get -----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 4*8 + 8*" loc "]\n"
+					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
 					"mov rax, [r8]\n"
 					"pop r8\n\n"
 					))
@@ -143,7 +143,7 @@
 					(code-gen val depth)
 					"box_set_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 2*8 + 1*8]\n"
+					"mov r8, [rbp + 2*8]\n"
 					"mov r8, [r8 + 8*" loc-lambda"]\n"
 					"mov r8, [r8 + 8*" loc-param "]\n"
 					"mov [r8], rax\n"
@@ -157,7 +157,7 @@
 					(code-gen val depth)
 					"box_set_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 4*8 + 8*" loc "]\n"
+					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
 					"mov [r8], rax\n"
 					"mov rax, [" void-labl "]\n\n"
 					))
@@ -252,35 +252,110 @@
 (define gen-runtime
 	(lambda (depth)
 			(string-append 
-				(gen-plus depth)
-				"mov [plus], rax\n"
-				(gen-minus depth)
-				"mov [minus], rax\n"
-				(gen-cons depth)
-				"mov [cons], rax\n"
-				(gen-mult depth)
-				"mov [mult], rax\n"
-				(gen-divi depth)
-				"mov [divi], rax\n"
-				(gen-car depth)
-				"mov [car], rax\n"
-				(gen-cdr depth)
-				"mov [cdr], rax\n"
-				(gen-null? depth)
-				"mov [null?], rax\n"
+				(gen-plus depth) "mov [plus], rax\n"
+				(gen-minus depth) "mov [minus], rax\n"
+				(gen-cons depth) "mov [cons], rax\n"
+				(gen-mult depth) "mov [mult], rax\n"
+				(gen-divi depth) "mov [divi], rax\n"
+				(gen-car depth) "mov [car], rax\n"
+				(gen-cdr depth) "mov [cdr], rax\n"
+				(gen-lower depth) "mov [lower], rax\n"
+				(gen-greater depth) "mov [greater], rax\n"
+				(gen-equali depth) "mov [equali], rax\n"
+				(gen-boolean? depth) "mov [boolean?], rax\n"
+				(gen-char? depth) "mov [char?], rax\n"
+				(gen-integer? depth) "mov [integer?], rax\n"
+				(gen-pair? depth) "mov [pair?], rax\n"
+				(gen-number? depth) "mov [number?], rax\n"
 				)))
-
-(define gen-null?
+				
+(define gen-number?
 	(lambda (depth)
-		(let* ((code-label (string-append "null_" (number->string (get-inc-counter))))
+		(let* ((code-label (string-append "number?_" (number->string (get-inc-counter))))
 		(str (string-append
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"our_is_null\n"
+			"our_number?\n"
+			 code-label "_end:\n\n")))
+		str)))	
+				
+(define gen-pair?
+	(lambda (depth)
+		(let* ((code-label (string-append "pair?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_pair?\n"
+			 code-label "_end:\n\n")))
+		str)))					
+				
+(define gen-integer?
+	(lambda (depth)
+		(let* ((code-label (string-append "integer?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_integer?\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-char?
+	(lambda (depth)
+		(let* ((code-label (string-append "char?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_char?\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-boolean?
+	(lambda (depth)
+		(let* ((code-label (string-append "boolean?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_boolean?\n"
+			 code-label "_end:\n\n")))
+		str)))						
+				
+(define gen-equali
+	(lambda (depth)
+		(let* ((code-label (string-append "equali_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_equali\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-greater
+	(lambda (depth)
+		(let* ((code-label (string-append "greater_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_greater\n"
 			 code-label "_end:\n\n")))
 		str)))
-
+				
+(define gen-lower
+	(lambda (depth)
+		(let* ((code-label (string-append "lower_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_lower\n"
+			 code-label "_end:\n\n")))
+		str)))
 
 (define gen-cdr
 	(lambda (depth)
@@ -391,7 +466,7 @@
 				"push r8\n"
 
 				; r8 - pointer to env
-				"mov r8, [rbp + 2*8 + 1*8]\n"
+				"mov r8, [rbp + 2*8]\n"
 			
 				; r8 - pointer to loc-lambda frame
 				"mov r8, [r8 + 8*" loc-lambda"]\n"
@@ -528,6 +603,7 @@
 			(string-append
 				"# ----- gen-applic " num-of-params " -----\n" 
 				 rator-code
+				 "pushall\n"
 				; put the pointer to rator's closure SOB in r8
 				"mov r8, rax\n"
 				"mov r9, r8\n"
@@ -547,16 +623,17 @@
 
 				"call r8\n"
 
-				"mov r8, [rsp + 1*8]\n"
+				"mov r10, [rsp + 1*8]\n"
 				; pop env, pop n, pop params
 				"add rsp, 8*2\n"
-				"mov r9, rax\n"
+				"mov r11, rax\n"
 				"mov rax, 8\n"
-				"mul r8\n"
+				"mul r10\n"
 				"add rsp, rax\n"
-				"mov rax, r9\n"
+				"mov rax, r11\n"
 				; pop 0 
 				"add rsp, 8\n"
+				"popall\n"
 				))))
 
 (define gen-lambda-opt
@@ -698,12 +775,12 @@
 		  				;(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
 		  				(string-append "dq MAKE_LITERAL_FRACTION(" (number->string (list-ref details 1)) " ," (number->string (list-ref details 2)) ")"))
 		  			((equal? type "T_VECTOR")
-		  				(fold-left (lambda (init rest)
-		  							(string-append init ", " rest)) 
-		  					(if (equal? (cadr details) 0)
-		  					"dq MAKE_LITERAL_VECTOR "
-		  					(string-append "MAKE_LITERAL_VECTOR " (list-ref details 2)))
-		  					(cdddr details)))
+                        (if (equal? (cadr details) 0)
+                            "dq MAKE_LITERAL(T_VECTOR, 0)"
+                            (fold-left (lambda (init rest)
+                                (string-append init ", " rest)) 
+                                (string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2))
+                                (cdddr details))))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
 		  			((equal? type "T_SYMBOL")
