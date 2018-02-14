@@ -1248,17 +1248,17 @@ write_sob_if_not_void:
     mov r12, rax
 
     ; r11 = address of new environment
-    mov rdi, %1
+    mov rdi, %1 ;  %1 = env_size (depth * 8)
     call malloc
     mov r11, rax
 
     ; if depth == 0 build a closure with an empty env
-    mov r8, %2
+    mov r8, %2 ; %2 = depth
 
     cmp r8, 0
     je .make_closure
     ; r8 = n (number of parameters)
-    mov r8, [rsp + 8*10 + %3]
+    mov r8, [rbp + %3] ; %3 = n_offset (8 * 3)
 
     ; r9 = size of extended environment (bytes)
     mov rax, r8
@@ -1281,7 +1281,7 @@ write_sob_if_not_void:
     .ext_env:
 
     ; r15 = current parameter
-    mov r15, [rsp + 8*10 + %4 + 8*r14]
+    mov r15, [rbp + %4 + 8*r14] ; %4 = params_offset (8 * 4)
 
     ; insert curr param to extended env
     mov [r10 + r14*8], r15 
@@ -1302,13 +1302,13 @@ write_sob_if_not_void:
 
     .cpy_prev_env:
     
-    dec r14
-    cmp r14, %2
     inc r14
+    cmp r14, %2 ; %2 = depth
     je .cpy_prev_env_done
-
+    dec r14 
+    
     ; put the next element of prev env in r8
-    mov r8, [rsp + 8*10 + %5]
+    mov r8, [rbp + %5] ; %5 = prev_env_offset (8 * 2)
     mov r8, [r8 + 8*r14]
 
 
@@ -1325,7 +1325,7 @@ write_sob_if_not_void:
 
     .make_closure:
 
-    MAKE_LITERAL_CLOSURE r12, r11, %6
+    MAKE_LITERAL_CLOSURE r12, r11, %6 ; %6 = code-label
     mov rax, [r12]
 
     popall
@@ -1470,6 +1470,214 @@ write_sob_if_not_void:
 	ret
 %endmacro
 
+%macro our_greater 0
+    push rbp
+    mov rbp, rsp
+    pushall
+    
+    ;;; r15 - counter, r14 - n
+	mov rax, 0
+	mov r15, 1
+	mov r14, [rbp + 3*8]
+	
+	
+	mov r10, [rbp + 4*8]
+	mov rbx, r10
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction_0
+	DATA_LOWER r10
+	mov r11, 1
+	jmp .loop
+	
+	.fraction_0:
+	mov r11, r10
+	DATA_UPPER r10
+	DATA_LOWER r11
+
+	.loop:
+	cmp r14, r15
+	je .endloop
+	
+	;;; r8 - curr param , rbx-type
+
+	mov r8, [rbp + 4*8 + r15*8]
+	mov rbx, r8
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction
+	DATA_LOWER r8
+	mov r9, 1
+	jmp .after_all
+
+	.fraction:
+	mov r9, r8
+	DATA_UPPER r8
+	DATA_LOWER r9
+	jmp .after_all
+
+
+	.after_all:
+	mov rax, r11
+	mul r9
+
+	; r13 - common denominator
+    ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
+	mov r13, rax
+	mov rax, r10
+	mul r9
+	mov r10, rax
+	mov rax, r8
+	mul r11
+    mov r8, rax
+    cmp r10, r8
+    jle .ret_false
+    
+    mov r10, r8
+    mov r11, r9
+
+
+	;;; reduce r10/r11 with gcd
+	push r10
+	push r11
+	call gcd
+	add rsp, 2*8
+	
+	;;; rbx - gcd of r10 and r11
+
+	mov rbx, rax
+
+	mov rdx, 0
+	;;; r10 - divide numerator by gcd
+	mov rax, r10
+	div rbx
+	mov r10, rax
+
+	;;; r11 - divide denominator by gcd
+	mov rax, r11
+	div rbx
+	mov r11, rax
+
+	inc r15
+	jmp .loop
+	.endloop:
+    
+    mov rax, [L3]
+    jmp .end
+            
+	.ret_false:
+	mov rax, [L4]
+	
+	.end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_equali 0
+    push rbp
+    mov rbp, rsp
+    pushall
+    
+    ;;; r15 - counter, r14 - n
+	mov rax, 0
+	mov r15, 1
+	mov r14, [rbp + 3*8]
+	
+	
+	mov r10, [rbp + 4*8]
+	mov rbx, r10
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction_0
+	DATA_LOWER r10
+	mov r11, 1
+	jmp .loop
+	
+	.fraction_0:
+	mov r11, r10
+	DATA_UPPER r10
+	DATA_LOWER r11
+
+	.loop:
+	cmp r14, r15
+	je .endloop
+	
+	;;; r8 - curr param , rbx-type
+
+	mov r8, [rbp + 4*8 + r15*8]
+	mov rbx, r8
+	TYPE rbx
+	cmp rbx, T_INTEGER
+	jne .fraction
+	DATA_LOWER r8
+	mov r9, 1
+	jmp .after_all
+
+	.fraction:
+	mov r9, r8
+	DATA_UPPER r8
+	DATA_LOWER r9
+	jmp .after_all
+
+
+	.after_all:
+	mov rax, r11
+	mul r9
+
+	; r13 - common denominator
+    ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
+	mov r13, rax
+	mov rax, r10
+	mul r9
+	mov r10, rax
+	mov rax, r8
+	mul r11
+    mov r8, rax
+    cmp r10, r8
+    jne .ret_false
+    
+    mov r10, r8
+    mov r11, r9
+
+
+	;;; reduce r10/r11 with gcd
+	push r10
+	push r11
+	call gcd
+	add rsp, 2*8
+	
+	;;; rbx - gcd of r10 and r11
+
+	mov rbx, rax
+
+	mov rdx, 0
+	;;; r10 - divide numerator by gcd
+	mov rax, r10
+	div rbx
+	mov r10, rax
+
+	;;; r11 - divide denominator by gcd
+	mov rax, r11
+	div rbx
+	mov r11, rax
+
+	inc r15
+	jmp .loop
+	.endloop:
+    
+    mov rax, [L3]
+    jmp .end
+            
+	.ret_false:
+	mov rax, [L4]
+	
+	.end:
+	popall
+	leave
+	ret
+%endmacro
+
 %macro our_car 0
 
 	push rbp
@@ -1501,7 +1709,135 @@ write_sob_if_not_void:
 	popall
 	leave
 	ret
+%endmacro
 
+%macro our_boolean? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_BOOL
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_char? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_CHAR
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_integer? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_INTEGER
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+%endmacro
+
+%macro our_pair? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_PAIR
+	jne .ret_false
+	
+	
+    mov rax, [L3]
+    jmp .end
+    
+    .ret_false:
+    mov rax, [L4]
+	
+    .end:
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_number? 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+	TYPE r8
+	cmp r8, T_INTEGER
+	je .ret_true
+	cmp r8, T_FRACTION
+	je .ret_true
+	
+	
+    mov rax, [L4]
+    jmp .end
+    
+    .ret_true:
+    mov rax, [L3]
+	
+    .end:
+	popall
+	leave
+	ret
+	
 %endmacro
 
 %macro our_is_null 0
