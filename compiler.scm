@@ -20,19 +20,23 @@
 		("plus" NULL +)
 		("cons" NULL cons)
 		("minus" NULL -)
-    ("null?" NULL null?)
-    ("mult" NULL *)
-    ("divi" NULL /)
-    ("car" NULL car)
-    ("cdr" NULL cdr)
-    ("lower" NULL <)
-    ("greater" NULL >)
-    ("equali" NULL =)
-    ("boolean?" NULL boolean?)
-    ("char?" NULL char?)
-    ("integer?" NULL integer?)
-    ("pair?" NULL pair?)
-    ("number?" NULL number?)
+        ("null?" NULL null?)
+        ("mult" NULL *)
+        ("divi" NULL /)
+        ("car" NULL car)
+        ("cdr" NULL cdr)
+        ("lower" NULL <)
+        ("greater" NULL >)
+        ("equali" NULL =)
+        ("boolean?" NULL boolean?)
+        ("char?" NULL char?)
+        ("integer?" NULL integer?)
+        ("pair?" NULL pair?)
+        ("number?" NULL number?)
+        ("procedure?" NULL procedure?)
+        ("string?" NULL string?)
+        ("symbol?" NULL symbol?)
+        ("vector?" NULL vector?)
 		))
 (set! symbol-table 
 	'(
@@ -210,7 +214,7 @@
 	(lambda ()
 		(map runtime-pipeline 
 			(list 
-				#| '(define append (lambda a 
+				'(define append (lambda a 
 									(let ((res (car a))
 											(to-add-list (cdr a)))
 										(letrec ((loop (lambda (curr to-add)
@@ -218,11 +222,13 @@
 																(add_to_list curr '())
 																(loop (add_to_list curr (car to-add)) (cdr to-add))))))
 											(loop res to-add-list)
-															)))) |#
-				#| '(define add_to_list (lambda (src to-add)
+															))))
+				'(define add_to_list (lambda (src to-add)
 										(letrec ((loop (lambda (orig)
-															(if (null? orig) to-add (cons (car orig) (loop (cdr orig)))))))
-										(loop src)))) |#
+															(if (null? orig) 
+																to-add 
+																(cons (car orig) (loop (cdr orig)))))))
+										(loop src))))
 				
 				))))
 
@@ -238,7 +244,7 @@
 			;(display merged-program) (newline) (newline)
 			(build-constants-table merged-program)
 			(build-globals-set-table merged-program)
-			(display constants-table) (newline)
+			;(display constants-table) (newline)
 			;(display symbol-table) (newline)
 			;(display global-table) (newline)
 			(call-with-output-file output
