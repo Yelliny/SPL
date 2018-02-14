@@ -115,18 +115,18 @@
 					"# ----- gen-box-get -----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 2*8 + 1*8]\n"
+					"mov r8, [rbp + 2*8]\n"
 					"mov r8, [r8 + 8*" loc-lambda"]\n"
 					"mov r8, [r8 + 8*" loc-param "]\n"
 					"mov rax, [r8]\n"
 					"pop r8\n\n"
 					))
-			(let ((loc (caddr pe)))
+			(let ((loc (number->string (caddr pe))))
 				(string-append
 					"# ----- gen-box-get -----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 4*8 + 8*" loc "]\n"
+					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
 					"mov rax, [r8]\n"
 					"pop r8\n\n"
 					))
@@ -143,7 +143,7 @@
 					(code-gen val depth)
 					"box_set_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 2*8 + 1*8]\n"
+					"mov r8, [rbp + 2*8]\n"
 					"mov r8, [r8 + 8*" loc-lambda"]\n"
 					"mov r8, [r8 + 8*" loc-param "]\n"
 					"mov [r8], rax\n"
@@ -157,7 +157,7 @@
 					(code-gen val depth)
 					"box_set_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 4*8 + 8*" loc "]\n"
+					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
 					"mov [r8], rax\n"
 					"mov rax, [" void-labl "]\n\n"
 					))
@@ -712,7 +712,7 @@
 
 									"popall\n"
 									)))
-		(display `(asIF: ,lambda-pe num-of-params: ,num-of-reg-params)) (newline)
+		;(display `(asIF: ,lambda-pe num-of-params: ,num-of-reg-params)) (newline)
 		(gen-lambda lambda-pe depth #t fix-stack-code))))
 
 (define gen-lambda-simple
@@ -772,7 +772,7 @@
 		  			((equal? type "T_PAIR")
 		  				(string-append "dq MAKE_LITERAL_PAIR(" (list-ref details 1) ", " (list-ref details 2) ")"))
 		  			((equal? type "T_FRACTION")
-		  				(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
+		  				;(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
 		  				(string-append "dq MAKE_LITERAL_FRACTION(" (number->string (list-ref details 1)) " ," (number->string (list-ref details 2)) ")"))
 		  			((equal? type "T_VECTOR")
                         (if (equal? (cadr details) 0)

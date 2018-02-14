@@ -1686,7 +1686,8 @@ write_sob_if_not_void:
 
 	;;; r8 - the pair (parameter)
 	mov r8, [rbp + 4*8]
-	CAR rax
+	CAR r8
+	mov rax, r8
 
 	popall
 	leave
@@ -1702,7 +1703,8 @@ write_sob_if_not_void:
 
 	;;; r8 - the pair (parameter)
 	mov r8, [rbp + 4*8]
-	CDR rax
+	CDR r8
+	mov rax, r8
 
 	popall
 	leave
@@ -1838,9 +1840,31 @@ write_sob_if_not_void:
 	
 %endmacro
 
+%macro our_is_null 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - parameter type
+	mov r8, [rbp + 4*8]
+	TYPE r8
+
+	cmp r8, T_NIL
+	je .is_nil
+	mov rax, [L4]
+	jmp .end
+
+	.is_nil:
+	mov rax, [L3]
+
+	.end:
+	popall
+	leave
+	ret
+
+%endmacro
+
 section .data
 .newline:
 	db CHAR_NEWLINE, 0
-	
-	
-	
