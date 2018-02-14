@@ -214,7 +214,7 @@
 	(lambda ()
 		(map runtime-pipeline 
 			(list 
-				#| '(define append (lambda a 
+				'(define append (lambda a 
 									(let ((res (car a))
 											(to-add-list (cdr a)))
 										(letrec ((loop (lambda (curr to-add)
@@ -222,11 +222,13 @@
 																(add_to_list curr '())
 																(loop (add_to_list curr (car to-add)) (cdr to-add))))))
 											(loop res to-add-list)
-															)))) |#
-				#| '(define add_to_list (lambda (src to-add)
+															))))
+				'(define add_to_list (lambda (src to-add)
 										(letrec ((loop (lambda (orig)
-															(if (null? orig) to-add (cons (car orig) (loop (cdr orig)))))))
-										(loop src)))) |#
+															(if (null? orig) 
+																to-add 
+																(cons (car orig) (loop (cdr orig)))))))
+										(loop src))))
 				
 				))))
 
@@ -242,7 +244,7 @@
 			;(display merged-program) (newline) (newline)
 			(build-constants-table merged-program)
 			(build-globals-set-table merged-program)
-			(display constants-table) (newline)
+			;(display constants-table) (newline)
 			;(display symbol-table) (newline)
 			;(display global-table) (newline)
 			(call-with-output-file output
