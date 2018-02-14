@@ -41,6 +41,8 @@
         ("denominator" NULL denominator)
         ("integer_to_char" NULL integer->char)
         ("make_string" NULL make-string)
+        ("not" NULL not)
+        ("set_car" NULL set-car!)
 		))
 (set! symbol-table 
 	'(

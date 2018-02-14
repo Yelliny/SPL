@@ -1760,6 +1760,35 @@ write_sob_if_not_void:
 	
 %endmacro
 
+%macro our_not 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+
+	; r9 - false SOB
+	mov r9, [L4]
+
+	sub r8, r9
+	cmp r8, 0
+
+	je .ret_true
+	mov rax, [L4]
+	jmp .end
+
+	.ret_true:
+	mov rax, [L3]
+
+	.end:
+	popall
+	leave
+	ret
+
+%endmacro
+
 
 %macro our_pred? 1
 
@@ -1925,6 +1954,45 @@ write_sob_if_not_void:
 	leave
 	ret
 	
+%endmacro
+
+%macro our_set_car 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;; r8 - pointer to pair
+	mov r8, [rbp + 4*8]
+
+	;; r9 - future car
+	mov r9, [rbp + 5*8]
+
+	mov rdi, 8
+	call malloc
+	mov r10, rax
+
+	; r10 - pointer to future car
+	mov [r10], r9
+
+	sub r10, start_of_data
+	shl r10, 34
+
+	; r11 - value of the pair
+	mov r11, [r8]
+	; r11 - reset 30 left bits
+	shl r11, 30
+	shr r11, 30
+
+	or r11, r10
+	mov [r8], r11
+
+	mov rax, [L1]
+
+	popall
+	leave
+	ret
+
 %endmacro
 
 section .data
