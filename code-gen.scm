@@ -272,7 +272,79 @@
 				(gen-symbol? depth) "mov [symbol?], rax\n"
 				(gen-vector? depth) "mov [vector?], rax\n"
 				(gen-null? depth) "mov [null?], rax\n"
+				(gen-char->integer depth) "mov [char_to_integer], rax\n"
+				(gen-denominator depth) "mov [denominator], rax\n"
+				(gen-integer->char depth) "mov [integer_to_char], rax\n"
+				(gen-make-string depth) "mov [make_string], rax\n"
+				(gen-not depth) "mov [not], rax\n"
+				;(gen-set-car! depth) "mov [set_car], rax\n"
 				)))
+
+(define gen-set-car!
+	(lambda (depth)
+		(let* ((code-label (string-append "set_car_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_set_car\n"
+			 code-label "_end:\n\n")))
+		str)))	
+				
+(define gen-not
+	(lambda (depth)
+		(let* ((code-label (string-append "not_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_not\n"
+			 code-label "_end:\n\n")))
+		str)))	
+
+(define gen-make-string
+	(lambda (depth)
+		(let* ((code-label (string-append "make_string_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_make_string\n"
+			 code-label "_end:\n\n")))
+		str)))					
+				
+(define gen-integer->char
+	(lambda (depth)
+		(let* ((code-label (string-append "integer_to_char_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_integer_to_char\n"
+			 code-label "_end:\n\n")))
+		str)))							
+				
+(define gen-denominator
+	(lambda (depth)
+		(let* ((code-label (string-append "denominator_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_denominator\n"
+			 code-label "_end:\n\n")))
+		str)))				
+										
+(define gen-char->integer
+	(lambda (depth)
+		(let* ((code-label (string-append "char_to_integer_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_char_to_integer\n"
+			 code-label "_end:\n\n")))
+		str)))				
 				
 (define gen-null?
 	(lambda (depth)

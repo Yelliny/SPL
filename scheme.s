@@ -43,6 +43,20 @@
 	or %1, T_INTEGER
 %endmacro
 
+%macro make_lit_char_runtime 1
+	shl %1, TYPE_BITS
+	or %1, T_CHAR
+%endmacro
+
+%macro make_lit_string_runtime 2
+    shl %1, 34
+    sub %2, start_of_data
+    shl %2, TYPE_BITS 
+	or %1, %2
+	or %1, T_STRING
+%endmacro
+
+
 %macro TYPE 1
 	and %1, ((1 << TYPE_BITS) - 1) 
 %endmacro
@@ -243,6 +257,12 @@ section .text
 ;;;	call write_sob_if_not_void
 ;;;	add rsp, 8
 ;;;	ret
+
+jmp END_ERROR
+ERROR:
+    call exit
+    
+END_ERROR:
 
 gcd:
 	push rbp
@@ -1740,6 +1760,35 @@ write_sob_if_not_void:
 	
 %endmacro
 
+%macro our_not 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - param
+	mov r8, [rbp + 4*8]
+
+	; r9 - false SOB
+	mov r9, [L4]
+
+	sub r8, r9
+	cmp r8, 0
+
+	je .ret_true
+	mov rax, [L4]
+	jmp .end
+
+	.ret_true:
+	mov rax, [L3]
+
+	.end:
+	popall
+	leave
+	ret
+
+%endmacro
+
 
 %macro our_pred? 1
 
@@ -1765,6 +1814,185 @@ write_sob_if_not_void:
 	leave
 	ret
 	
+%endmacro
+
+%macro our_char_to_integer 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r9 - param , r8 - type
+	mov r8, [rbp + 4*8]
+	mov r9, r8
+	TYPE r8
+	cmp r8, T_CHAR
+	jne ERROR
+
+	DATA r9
+	make_lit_int_runtime r9
+    mov rax, r9
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_denominator 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r9 - param , r8 - type
+	mov r8, [rbp + 4*8]
+	mov r9, r8
+	TYPE r8
+	cmp r8, T_INTEGER
+	je .integer
+    
+    cmp r8, T_FRACTION
+    je .fraction
+    
+    jmp ERROR
+	.integer:
+	mov r9, 1
+	make_lit_int_runtime r9
+	mov rax, r9
+	jmp .end
+
+	.fraction:
+	DATA_LOWER r9
+	make_lit_int_runtime r9
+	mov rax, r9
+	
+	.end:
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_integer_to_char 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r9 - param , r8 - type
+	mov r8, [rbp + 4*8]
+	mov r9, r8
+	TYPE r8
+	cmp r8, T_INTEGER
+	jne ERROR
+
+	DATA r9
+	make_lit_char_runtime r9
+    mov rax, r9
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_make_string 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - number , r9 - char, r10 - type
+	mov r10, [rbp + 3*8]
+	cmp r10, 2
+	jne ERROR
+	
+	mov r8, [rbp + 4*8]
+	mov r10, r8
+	TYPE r10
+	cmp r10, T_INTEGER
+	jne ERROR
+	
+	mov r10, r8
+	DATA r10
+	cmp r10, 0
+	jle ERROR
+	DATA r8
+	
+	mov r9, [rbp + 5*8]
+	mov r10, r9
+	TYPE r10
+	cmp r10, T_CHAR
+	jne ERROR
+	DATA r9
+	
+	; malloc size of string length
+    mov rdi, r8
+	call malloc
+	
+	;; r11 - pointer to malloc , r12 - counter
+	mov r11, rax
+	mov r12, 0
+	
+	;; fill string with chars
+	.loop:
+	cmp r12, r8
+	je .endloop
+	mov [r11 + r12], r9
+	inc r12
+	jmp .loop
+	
+	.endloop:
+	make_lit_string_runtime r8, r11
+    mov rax, r8
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_set_car 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;; r8 - pointer to pair
+	mov r8, [rbp + 4*8]
+
+	;; r9 - future car
+	mov r9, [rbp + 5*8]
+
+	mov rdi, 8
+	call malloc
+	mov r10, rax
+
+	; r10 - pointer to future car
+	mov [r10], r9
+
+	sub r10, start_of_data
+	shl r10, 34
+
+	; r11 - value of the pair
+	mov r11, [r8]
+	; r11 - reset 30 left bits
+	shl r11, 30
+	shr r11, 30
+
+	or r11, r10
+	mov [r8], r11
+
+	mov rax, [L1]
+
+	popall
+	leave
+	ret
+
 %endmacro
 
 section .data
