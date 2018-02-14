@@ -115,18 +115,18 @@
 					"# ----- gen-box-get -----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 2*8 + 1*8]\n"
+					"mov r8, [rbp + 2*8]\n"
 					"mov r8, [r8 + 8*" loc-lambda"]\n"
 					"mov r8, [r8 + 8*" loc-param "]\n"
 					"mov rax, [r8]\n"
 					"pop r8\n\n"
 					))
-			(let ((loc (caddr pe)))
+			(let ((loc (number->string (caddr pe))))
 				(string-append
 					"# ----- gen-box-get -----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 4*8 + 8*" loc "]\n"
+					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
 					"mov rax, [r8]\n"
 					"pop r8\n\n"
 					))
@@ -143,7 +143,7 @@
 					(code-gen val depth)
 					"box_set_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 2*8 + 1*8]\n"
+					"mov r8, [rbp + 2*8]\n"
 					"mov r8, [r8 + 8*" loc-lambda"]\n"
 					"mov r8, [r8 + 8*" loc-param "]\n"
 					"mov [r8], rax\n"
@@ -157,7 +157,7 @@
 					(code-gen val depth)
 					"box_set_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
-					"mov r8, [rsp + 4*8 + 8*" loc "]\n"
+					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
 					"mov [r8], rax\n"
 					"mov rax, [" void-labl "]\n\n"
 					))
@@ -267,7 +267,68 @@
 				(gen-integer? depth) "mov [integer?], rax\n"
 				(gen-pair? depth) "mov [pair?], rax\n"
 				(gen-number? depth) "mov [number?], rax\n"
+				(gen-procedure? depth) "mov [procedure?], rax\n"
+				(gen-string? depth) "mov [string?], rax\n"
+				(gen-symbol? depth) "mov [symbol?], rax\n"
+				(gen-vector? depth) "mov [vector?], rax\n"
+				(gen-null? depth) "mov [null?], rax\n"
 				)))
+				
+(define gen-null?
+	(lambda (depth)
+		(let* ((code-label (string-append "null?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_pred? T_NIL\n"
+			 code-label "_end:\n\n")))
+		str)))	
+						
+				
+(define gen-procedure?
+	(lambda (depth)
+		(let* ((code-label (string-append "procedure?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_pred? T_CLOSURE\n"
+			 code-label "_end:\n\n")))
+		str)))	
+		
+(define gen-string?
+	(lambda (depth)
+		(let* ((code-label (string-append "string?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_pred? T_STRING\n"
+			 code-label "_end:\n\n")))
+		str)))	
+		
+(define gen-symbol?
+	(lambda (depth)
+		(let* ((code-label (string-append "symbol?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_pred? T_SYMBOL\n"
+			 code-label "_end:\n\n")))
+		str)))	
+		
+(define gen-vector?
+	(lambda (depth)
+		(let* ((code-label (string-append "vector?_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_pred? T_VECTOR\n"
+			 code-label "_end:\n\n")))
+		str)))			
 				
 (define gen-number?
 	(lambda (depth)
@@ -287,7 +348,7 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"our_pair?\n"
+			"our_pred? T_PAIR\n"
 			 code-label "_end:\n\n")))
 		str)))					
 				
@@ -298,7 +359,7 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"our_integer?\n"
+			"our_pred? T_INTEGER\n"
 			 code-label "_end:\n\n")))
 		str)))				
 				
@@ -309,7 +370,7 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"our_char?\n"
+			"our_pred? T_CHAR\n"
 			 code-label "_end:\n\n")))
 		str)))				
 				
@@ -320,7 +381,7 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"our_boolean?\n"
+			"our_pred? T_BOOL\n"
 			 code-label "_end:\n\n")))
 		str)))						
 				
@@ -712,7 +773,7 @@
 
 									"popall\n"
 									)))
-		(display `(asIF: ,lambda-pe num-of-params: ,num-of-reg-params)) (newline)
+		;(display `(asIF: ,lambda-pe num-of-params: ,num-of-reg-params)) (newline)
 		(gen-lambda lambda-pe depth #t fix-stack-code))))
 
 (define gen-lambda-simple
@@ -772,7 +833,7 @@
 		  			((equal? type "T_PAIR")
 		  				(string-append "dq MAKE_LITERAL_PAIR(" (list-ref details 1) ", " (list-ref details 2) ")"))
 		  			((equal? type "T_FRACTION")
-		  				(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
+		  				;(display (list-ref details 1)) (newline) (display (list-ref details 2)) (newline)
 		  				(string-append "dq MAKE_LITERAL_FRACTION(" (number->string (list-ref details 1)) " ," (number->string (list-ref details 2)) ")"))
 		  			((equal? type "T_VECTOR")
                         (if (equal? (cadr details) 0)

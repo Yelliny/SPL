@@ -20,6 +20,7 @@
 		("plus" NULL +)
 		("cons" NULL cons)
 		("minus" NULL -)
+        ("null?" NULL null?)
         ("mult" NULL *)
         ("divi" NULL /)
         ("car" NULL car)
@@ -32,6 +33,10 @@
         ("integer?" NULL integer?)
         ("pair?" NULL pair?)
         ("number?" NULL number?)
+        ("procedure?" NULL procedure?)
+        ("string?" NULL string?)
+        ("symbol?" NULL symbol?)
+        ("vector?" NULL vector?)
 		))
 (set! symbol-table 
 	'(
@@ -146,11 +151,8 @@
 			((vector? const)
 				(if (not (member const vals))
 					(let ((elem-labels (map insert-constant (vector->list const))))
-                        (if (null? elem-labels)
-                        (insert-to-table const `(T_VECTOR ,(vector-length const) "0"))
-						(insert-to-table const `(T_VECTOR ,(vector-length const) ,@elem-labels))))
-					(list-ref labels (index-of vals const))
-					))
+						(insert-to-table const `(T_VECTOR ,(vector-length const) ,@elem-labels)))
+					(list-ref labels (index-of vals const))))
 			((string? const)
 				(if (not (member const vals))
 					(let ((chars-ascii (map char->integer (string->list const))))
@@ -212,7 +214,21 @@
 	(lambda ()
 		(map runtime-pipeline 
 			(list 
-				'(define a 9)))))
+				#| '(define append (lambda a 
+									(let ((res (car a))
+											(to-add-list (cdr a)))
+										(letrec ((loop (lambda (curr to-add)
+															(if (null? to-add)
+																(add_to_list curr '())
+																(loop (add_to_list curr (car to-add)) (cdr to-add))))))
+											(loop res to-add-list)
+															)))) |#
+				#| '(define add_to_list (lambda (src to-add)
+										(letrec ((loop (lambda (orig)
+															(if (null? orig) to-add (cons (car orig) (loop (cdr orig)))))))
+										(loop src)))) |#
+				
+				))))
 
 
 (define compile-scheme-file
@@ -221,9 +237,9 @@
 			(program (pipeline file))
 			(runtime (runtime-functions-scm-code))
 			(merged-program (append runtime program)))
-			(display runtime) (newline) (newline)
-			(display program) (newline) (newline)
-			(display merged-program) (newline) (newline)
+			;(display runtime) (newline) (newline)
+			;(display program) (newline) (newline)
+			;(display merged-program) (newline) (newline)
 			(build-constants-table merged-program)
 			(build-globals-set-table merged-program)
 			(display constants-table) (newline)
