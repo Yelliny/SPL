@@ -466,7 +466,7 @@
 				"push r8\n"
 
 				; r8 - pointer to env
-				"mov r8, [rbp + 2*8 + 1*8]\n"
+				"mov r8, [rbp + 2*8]\n"
 			
 				; r8 - pointer to loc-lambda frame
 				"mov r8, [r8 + 8*" loc-lambda"]\n"

@@ -1248,17 +1248,17 @@ write_sob_if_not_void:
     mov r12, rax
 
     ; r11 = address of new environment
-    mov rdi, %1
+    mov rdi, %1 ;  %1 = env_size (depth * 8)
     call malloc
     mov r11, rax
 
     ; if depth == 0 build a closure with an empty env
-    mov r8, %2
+    mov r8, %2 ; %2 = depth
 
     cmp r8, 0
     je .make_closure
     ; r8 = n (number of parameters)
-    mov r8, [rsp + 8*10 + %3]
+    mov r8, [rbp + %3] ; %3 = n_offset (8 * 3)
 
     ; r9 = size of extended environment (bytes)
     mov rax, r8
@@ -1281,7 +1281,7 @@ write_sob_if_not_void:
     .ext_env:
 
     ; r15 = current parameter
-    mov r15, [rsp + 8*10 + %4 + 8*r14]
+    mov r15, [rbp + %4 + 8*r14] ; %4 = params_offset (8 * 4)
 
     ; insert curr param to extended env
     mov [r10 + r14*8], r15 
@@ -1302,13 +1302,13 @@ write_sob_if_not_void:
 
     .cpy_prev_env:
     
-    dec r14
-    cmp r14, %2
     inc r14
+    cmp r14, %2 ; %2 = depth
     je .cpy_prev_env_done
-
+    dec r14 
+    
     ; put the next element of prev env in r8
-    mov r8, [rsp + 8*10 + %5]
+    mov r8, [rbp + %5] ; %5 = prev_env_offset (8 * 2)
     mov r8, [r8 + 8*r14]
 
 
@@ -1325,7 +1325,7 @@ write_sob_if_not_void:
 
     .make_closure:
 
-    MAKE_LITERAL_CLOSURE r12, r11, %6
+    MAKE_LITERAL_CLOSURE r12, r11, %6 ; %6 = code-label
     mov rax, [r12]
 
     popall
