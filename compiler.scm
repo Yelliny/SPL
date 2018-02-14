@@ -37,6 +37,10 @@
         ("string?" NULL string?)
         ("symbol?" NULL symbol?)
         ("vector?" NULL vector?)
+        ("char_to_integer" NULL char->integer)
+        ("denominator" NULL denominator)
+        ("integer_to_char" NULL integer->char)
+        ("make_string" NULL make-string)
 		))
 (set! symbol-table 
 	'(
