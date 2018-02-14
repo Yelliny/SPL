@@ -56,6 +56,14 @@
 	or %1, T_STRING
 %endmacro
 
+%macro make_lit_vector_runtime 2
+    shl %1, 34
+    sub %2, start_of_data
+    shl %2, TYPE_BITS 
+	or %1, %2
+	or %1, T_VECTOR
+%endmacro
+
 
 %macro TYPE 1
 	and %1, ((1 << TYPE_BITS) - 1) 
@@ -1846,6 +1854,41 @@ write_sob_if_not_void:
 	
 %endmacro
 
+%macro our_numerator 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r9 - param , r8 - type
+	mov r8, [rbp + 4*8]
+	mov r9, r8
+	TYPE r8
+	cmp r8, T_INTEGER
+	je .integer
+    
+    cmp r8, T_FRACTION
+    je .fraction
+    
+    jmp ERROR
+	.integer:
+	DATA r9
+	make_lit_int_runtime r9
+	mov rax, r9
+	jmp .end
+
+	.fraction:
+	DATA_UPPER r9
+	make_lit_int_runtime r9
+	mov rax, r9
+	
+	.end:
+	popall
+	leave
+	ret
+	
+%endmacro
+
 %macro our_integer_to_char 0
 
 	push rbp
@@ -1887,11 +1930,9 @@ write_sob_if_not_void:
 	cmp r10, T_INTEGER
 	jne ERROR
 	
-	mov r10, r8
-	DATA r10
-	cmp r10, 0
-	jle ERROR
 	DATA r8
+	cmp r8, 0
+	jl ERROR
 	
 	mov r9, [rbp + 5*8]
 	mov r10, r9
@@ -1919,6 +1960,129 @@ write_sob_if_not_void:
 	.endloop:
 	make_lit_string_runtime r8, r11
     mov rax, r8
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_make_vector 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r10, [rbp + 3*8]
+	cmp r10, 2
+	jne ERROR
+	
+	mov r8, [rbp + 4*8]
+	mov r10, r8
+	TYPE r10
+	cmp r10, T_INTEGER
+	jne ERROR
+	
+	DATA r8
+	cmp r8, 0
+	jl ERROR
+	
+	mov r9, [rbp + 5*8]
+	DATA r9
+
+    ; malloc size of string length
+	mov rax, 8
+	mul r8
+	mov rdi, rax
+	call malloc
+	
+	;; r11 - pointer to malloc , r12 - counter
+	mov r11, rax
+	mov r12, 0
+	
+	;; fill string with chars
+	.loop:
+	cmp r12, r8
+	je .endloop
+	mov [r11 + r12*8], r9
+	inc r12
+	jmp .loop
+	
+	.endloop:
+	make_lit_vector_runtime r8, r11
+    mov rax, r8
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro
+
+
+%macro our_length 1
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r10, [rbp + 3*8]
+	cmp r10, 1
+	jne ERROR
+	
+	mov r8, [rbp + 4*8]
+	mov r10, r8
+	TYPE r10
+	cmp r10, %1
+	jne ERROR
+	
+	;  - length
+	DATA_UPPER r8
+	make_lit_int_runtime r8
+    mov rax, r8
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_string_ref 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - string , r9 - index, r10 - type
+	mov r10, [rbp + 3*8]
+	cmp r10, 2
+	jne ERROR
+	
+	mov r8, [rbp + 4*8]
+	mov r10, r8
+	TYPE r10
+	cmp r10, T_STRING
+	jne ERROR
+	
+	mov r9, [rbp + 5*8]
+	mov r10, r9
+	TYPE r10
+	cmp r10, T_INTEGER
+	jne ERROR
+	DATA r9
+	
+	;; check index < n
+	mov r10, r8
+	DATA_UPPER r10
+	cmp r10, r9
+	jle ERROR
+	
+	DATA_LOWER r8
+	mov r10, [r8 + r9]
+	make_lit_int_runtime r10
+    mov rax, r10
 
 	
 	popall

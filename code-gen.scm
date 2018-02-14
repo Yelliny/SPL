@@ -276,7 +276,67 @@
 				(gen-denominator depth) "mov [denominator], rax\n"
 				(gen-integer->char depth) "mov [integer_to_char], rax\n"
 				(gen-make-string depth) "mov [make_string], rax\n"
+				(gen-make-vector depth) "mov [make_vector], rax\n"
+				(gen-numerator depth) "mov [numerator], rax\n"
+				(gen-string-length depth) "mov [string_length], rax\n"
+				(gen-vector-length depth) "mov [vector_length], rax\n"
+				(gen-string-ref depth) "mov [string_ref], rax\n"
 				)))
+				
+(define gen-string-ref
+	(lambda (depth)
+		(let* ((code-label (string-append "string_ref_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_string_ref\n"
+			 code-label "_end:\n\n")))
+		str)))					
+			
+(define gen-vector-length
+	(lambda (depth)
+		(let* ((code-label (string-append "vector_length_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_length T_VECTOR\n"
+			 code-label "_end:\n\n")))
+		str)))				
+			
+(define gen-string-length
+	(lambda (depth)
+		(let* ((code-label (string-append "string_length_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_length T_STRING\n"
+			 code-label "_end:\n\n")))
+		str)))					
+				
+(define gen-numerator
+	(lambda (depth)
+		(let* ((code-label (string-append "numerator_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_numerator\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-make-vector
+	(lambda (depth)
+		(let* ((code-label (string-append "make_vector_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_make_vector\n"
+			 code-label "_end:\n\n")))
+		str)))	
 				
 (define gen-make-string
 	(lambda (depth)
@@ -767,6 +827,12 @@
 									"cmp qword [rbp + 4*8 + r9*8], 0\n"
 									"jne .search_list_end\n"
 
+									; rbx - size of shift up
+									"mov rbx, r9\n"
+									"mov rcx, " num-of-reg-params "\n"
+									"sub rbx, rcx\n"
+									
+
 									; rbp + 4*8 +r9*8 points to the end of the list (nil)
 									; r11 - nil
 									"mov r11, [" nil-labl "]\n"
@@ -804,13 +870,72 @@
 									"jmp .build_list\n"
 
 									".push_list:\n"
+									; r13 - the list
 									"mov r13, qword [r12]\n"
-									"mov [rbp + 4*8 + " num-of-reg-params "*8], r13\n"
+									"mov r15, " num-of-reg-params "\n"
+
+									"mov [rbp + 4*8 + r15*8], r13\n"
+									; in case that there is only 1 extra param, do not shift the stack
+									"cmp rbx, 1\n"
+									"jg .shift_stack_up\n"
+
 									"jmp .done\n"
 
+									".shift_stack_up:\n"
+									; rbx - size of shift
+									"dec rbx\n"
+									; r15 - pointer to stack element to shift
+									"add r15, 4\n"
+
+									".shift_up_loop:\n"
+									"cmp r15, 0\n"
+									"jl .shift_up_done\n"
+									; r14 - element to shift
+									"mov r14, qword [rbp + r15*8]\n"
+									; shift
+									"mov rdx, r15\n"
+									"add rdx, rbx\n"
+									"mov [rbp + rdx*8], r14\n"
+									"dec r15\n"
+									"jmp .shift_up_loop\n"
+
+									".shift_up_done:\n"
+									; shift up rsb,rbp as well
+									"mov rax, 8\n"
+									"mul rbx\n"
+									"add rbp, rax\n"
+									"add rsp, rax\n"
+
+									"jmp .done\n"
+
+
 									".push_nil:\n"
-									"mov r14, qword [" nil-labl "]\n"
-									"mov [rbp + 4*8 + r9*8], r14\n"
+
+									; r8 - pointer of top element in stack to be shifted
+									"mov r8, " num-of-reg-params "\n"
+									"add r8, 3\n"
+									; r9 - counter
+									"mov r9, 0\n"
+
+									".shift_stack_down:\n"
+									"cmp r9, r8\n"
+									"jg .shift_down_done\n"
+									; r10 - current element to be shifted down
+									"mov r10, [rbp + r9*8]\n"
+									; r11 - stack pointer to the shifted location
+									"mov r11, r9\n"
+									"dec r11\n"
+									"mov [rbp + r11*8], r10\n"
+
+									"inc r9\n"
+									"jmp .shift_stack_down\n"
+
+									".shift_down_done:\n"
+									"mov r10, [" nil-labl "]\n"
+									"mov [rbp + r8*8], r10\n"
+									; shift rsp,rbp as well
+									"sub rsp, 8\n"
+									"sub rbp, 8\n"
 
 									".done:\n"
 
@@ -888,7 +1013,7 @@
                             "dq MAKE_LITERAL(T_VECTOR, 0)"
                             (fold-left (lambda (init rest)
                                 (string-append init ", " rest)) 
-                                (string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2))
+                                (string-append "MAKE_LITERAL_VECTOR " (list-ref details 2))
                                 (cdddr details))))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
