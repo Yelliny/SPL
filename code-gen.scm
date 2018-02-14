@@ -346,6 +346,50 @@
 			 code-label "_end:\n\n")))
 		str)))				
 				
+(define gen-make-string
+	(lambda (depth)
+		(let* ((code-label (string-append "make_string_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_make_string\n"
+			 code-label "_end:\n\n")))
+		str)))					
+				
+(define gen-integer->char
+	(lambda (depth)
+		(let* ((code-label (string-append "integer_to_char_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_integer_to_char\n"
+			 code-label "_end:\n\n")))
+		str)))							
+				
+(define gen-denominator
+	(lambda (depth)
+		(let* ((code-label (string-append "denominator_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_denominator\n"
+			 code-label "_end:\n\n")))
+		str)))				
+										
+(define gen-char->integer
+	(lambda (depth)
+		(let* ((code-label (string-append "char_to_integer_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_char_to_integer\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
 (define gen-null?
 	(lambda (depth)
 		(let* ((code-label (string-append "null?_" (number->string (get-inc-counter))))
