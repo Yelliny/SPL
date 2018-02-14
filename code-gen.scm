@@ -276,6 +276,11 @@
 				(gen-denominator depth) "mov [denominator], rax\n"
 				(gen-integer->char depth) "mov [integer_to_char], rax\n"
 				(gen-make-string depth) "mov [make_string], rax\n"
+				(gen-make-vector depth) "mov [make_vector], rax\n"
+				(gen-numerator depth) "mov [numerator], rax\n"
+				(gen-string-length depth) "mov [string_length], rax\n"
+				(gen-vector-length depth) "mov [vector_length], rax\n"
+				(gen-string-ref depth) "mov [string_ref], rax\n"
 				(gen-not depth) "mov [not], rax\n"
 				;(gen-set-car! depth) "mov [set_car], rax\n"
 				)))
@@ -345,6 +350,61 @@
 			"our_char_to_integer\n"
 			 code-label "_end:\n\n")))
 		str)))				
+				
+(define gen-string-ref
+	(lambda (depth)
+		(let* ((code-label (string-append "string_ref_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_string_ref\n"
+			 code-label "_end:\n\n")))
+		str)))					
+			
+(define gen-vector-length
+	(lambda (depth)
+		(let* ((code-label (string-append "vector_length_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_length T_VECTOR\n"
+			 code-label "_end:\n\n")))
+		str)))				
+			
+(define gen-string-length
+	(lambda (depth)
+		(let* ((code-label (string-append "string_length_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_length T_STRING\n"
+			 code-label "_end:\n\n")))
+		str)))					
+				
+(define gen-numerator
+	(lambda (depth)
+		(let* ((code-label (string-append "numerator_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_numerator\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-make-vector
+	(lambda (depth)
+		(let* ((code-label (string-append "make_vector_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_make_vector\n"
+			 code-label "_end:\n\n")))
+		str)))	
 				
 (define gen-make-string
 	(lambda (depth)
@@ -1021,7 +1081,7 @@
                             "dq MAKE_LITERAL(T_VECTOR, 0)"
                             (fold-left (lambda (init rest)
                                 (string-append init ", " rest)) 
-                                (string-append "dq MAKE_LITERAL_VECTOR " (list-ref details 2))
+                                (string-append "MAKE_LITERAL_VECTOR " (list-ref details 2))
                                 (cdddr details))))
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
