@@ -1183,7 +1183,7 @@
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
 		  			((equal? type "T_SYMBOL")
-		  				)
+                        (string-append "MAKE_LITERAL_SYMBOL \"" (symbol->string (cadr details)) "\""))
 			  ))))
 
 (define get-const-label

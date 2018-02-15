@@ -1,7 +1,9 @@
-;(load "sexpr-parser.scm")
-;(load "tag-parser.scm")
-;(load "semantic-analyzer.scm")
-;(load "code-gen.scm")
+
+;; (load "sexpr-parser.scm")
+;; (load "tag-parser.scm")
+;; (load "semantic-analyzer.scm")
+;; (load "code-gen.scm")
+
 
 (set! constants-table 
 	`(
@@ -178,7 +180,11 @@
 						(insert-to-table const `(T_STRING ,(string-length const) ,const ,@chars-ascii)))
 					(list-ref labels (index-of vals const))))
 			((symbol? const)
-				(insert-symbol const))
+                (if (not (member const vals))
+					(let ((str-addrs (insert-constant (symbol->string const))))
+						(insert-to-table const `(T_SYMBOL ,const ,str-addrs)))
+					(list-ref labels (index-of vals const))))
+				;(insert-symbol const))
 			((eq? (void) const)
 				(list-ref labels (index-of vals const)))
 			(else "L0")))))
