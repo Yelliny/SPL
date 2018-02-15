@@ -49,8 +49,13 @@
         ("vector_ref" NULL vector-ref)
         ("not" NULL not)
         ("set_car" NULL set-car!)
+        ("set_cdr" NULL set-cdr!)
         ("remainder" NULL remainder)
+        ("string_set" NULL string-set!)
+        ("vector_set" NULL vector-set!)
         ("apply" NULL apply)
+        ("eq?" NULL eq?)
+        ("vector" NULL vector)
 		))
 (set! symbol-table 
 	'(
@@ -255,6 +260,14 @@
                                             (loop l))))
                                             
                 '(define rational? number?)
+                
+                '(define list_length (lambda (lst)
+                                        (letrec ((loop
+                                                    (lambda (l)
+                                                        (if (null? l)
+                                                            0
+                                                            (+ 1 (list_length (cdr l)))))))
+                                                (loop lst))))
 
 				
 				))))
