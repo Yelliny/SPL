@@ -46,6 +46,7 @@
         ("string_length" NULL string-length)
         ("vector_length" NULL vector-length)
         ("string_ref" NULL string-ref)
+        ("vector_ref" NULL vector-ref)
         ("not" NULL not)
         ("set_car" NULL set-car!)
 		))
