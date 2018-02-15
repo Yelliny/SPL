@@ -281,9 +281,21 @@
 				(gen-string-length depth) "mov [string_length], rax\n"
 				(gen-vector-length depth) "mov [vector_length], rax\n"
 				(gen-string-ref depth) "mov [string_ref], rax\n"
+				(gen-vector-ref depth) "mov [vector_ref], rax\n"
 				(gen-not depth) "mov [not], rax\n"
 				;(gen-set-car! depth) "mov [set_car], rax\n"
 				)))
+				
+(define gen-vector-ref
+	(lambda (depth)
+		(let* ((code-label (string-append "vector_ref_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_vector_ref\n"
+			 code-label "_end:\n\n")))
+		str)))				
 
 (define gen-set-car!
 	(lambda (depth)
