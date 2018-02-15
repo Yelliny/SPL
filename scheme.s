@@ -1948,10 +1948,14 @@ write_sob_if_not_void:
 	mov rbp, rsp
 	pushall
 
-	;;; r8 - number , r9 - char, r10 - type
-	mov r10, [rbp + 3*8]
-	cmp r10, 2
-	jne ERROR
+	;;; r8 - number , r9 - char, r10 - type, r11- nparams
+	mov r11, [rbp + 3*8]
+	cmp r11, 2
+	jg ERROR
+	
+	cmp r11, 1
+	jl ERROR
+	
 	
 	mov r8, [rbp + 4*8]
 	mov r10, r8
@@ -1959,17 +1963,29 @@ write_sob_if_not_void:
 	cmp r10, T_INTEGER
 	jne ERROR
 	
+
+	;; check if length < 0
 	DATA r8
 	cmp r8, 0
 	jl ERROR
 	
+	cmp r11, 1
+	je .one_param
+	
+    ;; two params - r9 holds the char
 	mov r9, [rbp + 5*8]
 	mov r10, r9
 	TYPE r10
 	cmp r10, T_CHAR
 	jne ERROR
 	DATA r9
+	jmp .malloc
 	
+	;; one param - r9 holds 0
+	.one_param:
+    mov r9, 0
+	
+	.malloc:
 	; malloc size of string length
     mov rdi, r8
 	call malloc
@@ -1997,6 +2013,16 @@ write_sob_if_not_void:
 	
 %endmacro
 
+%macro our_length 1
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r10, [rbp + 3*8]
+	cmp r10, 1
+  --------------------
+
 
 %macro our_make_vector 0
   	push rbp
@@ -2004,11 +2030,13 @@ write_sob_if_not_void:
 	pushall
 	mov r10, [rbp + 3*8]
 	cmp r10, 2
+
 	jne ERROR
 	
 	mov r8, [rbp + 4*8]
 	mov r10, r8
 	TYPE r10
+
 	cmp r10, T_INTEGER
 	jne ERROR
 	
@@ -2041,26 +2069,7 @@ write_sob_if_not_void:
 	make_lit_vector_runtime r8, r11
     mov rax, r8
 
-	popall
-	leave
-	ret
-	
-%endmacro
-
-
-%macro our_length 1
-
-	push rbp
-	mov rbp, rsp
-	pushall
-
-	mov r10, [rbp + 3*8]
-	cmp r10, 1
-	jne ERROR
-	
-	mov r8, [rbp + 4*8]
-	mov r10, r8
-	TYPE r10
+=======
 	cmp r10, %1
 	jne ERROR
 	
@@ -2076,47 +2085,6 @@ write_sob_if_not_void:
 	
 %endmacro
 
-%macro our_string_ref 0
-
-	push rbp
-	mov rbp, rsp
-	pushall
-
-	;;; r8 - string , r9 - index, r10 - type
-	mov r10, [rbp + 3*8]
-	cmp r10, 2
-	jne ERROR
-	
-	mov r8, [rbp + 4*8]
-	mov r10, r8
-	TYPE r10
-	cmp r10, T_STRING
-	jne ERROR
-	
-	mov r9, [rbp + 5*8]
-	mov r10, r9
-	TYPE r10
-	cmp r10, T_INTEGER
-	jne ERROR
-	DATA r9
-	
-	;; check index < n
-	mov r10, r8
-	DATA_UPPER r10
-	cmp r10, r9
-	jle ERROR
-	
-	DATA_LOWER r8
-	mov r10, [r8 + r9]
-	make_lit_int_runtime r10
-    mov rax, r10
-
-	
-	popall
-	leave
-	ret
-
-%endmacro
 	
 %macro our_set_car 0
   	push rbp
