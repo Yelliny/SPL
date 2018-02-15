@@ -287,7 +287,19 @@
 				(gen-not depth) "mov [not], rax\n"
 				(gen-remainder depth) "mov [remainder], rax\n"
 				;(gen-set-car! depth) "mov [set_car], rax\n"
+				(gen-apply depth) "mov [apply], rax\n"
 				)))
+
+(define gen-apply
+	(lambda (depth)
+		(let* ((code-label (string-append "apply_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_apply\n"
+			 code-label "_end:\n\n")))
+		str)))		
 				
 (define gen-vector-ref
 	(lambda (depth)
