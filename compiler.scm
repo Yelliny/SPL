@@ -53,6 +53,7 @@
         ("remainder" NULL remainder)
         ("string_set" NULL string-set!)
         ("vector_set" NULL vector-set!)
+        ("apply" NULL apply)
 		))
 (set! symbol-table 
 	'(

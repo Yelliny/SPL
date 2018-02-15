@@ -288,7 +288,19 @@
 				(gen-set-cdr! depth) "mov [set_cdr], rax\n"
 				(gen-string-set! depth) "mov [string_set], rax\n"
 				(gen-vector-set! depth) "mov [vector_set], rax\n"
+				(gen-apply depth) "mov [apply], rax\n"
 				)))
+
+(define gen-apply
+	(lambda (depth)
+		(let* ((code-label (string-append "apply_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_apply\n"
+			 code-label "_end:\n\n")))
+		str)))		
 				
 (define gen-vector-set!
 	(lambda (depth)
