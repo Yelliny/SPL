@@ -2202,34 +2202,173 @@ write_sob_if_not_void:
 %endmacro
 	
 %macro our_set_car 0
+
   	push rbp
 	mov rbp, rsp
 	pushall
-	;; r8 - pointer to pair
+	
+	;; r10 - num params
+	mov r10, [rbp + 3*8]
+    cmp r10, 2
+    jne ERROR
+    
+    
+	;; r8 - pointer to car pair
 	mov r8, [rbp + 4*8]
-
+    mov r10, r8
+    TYPE r10
+    cmp r10, T_PAIR
+    jne ERROR
+    DATA_UPPER r8
+    add r8, start_of_data
+    
 	;; r9 - future car
 	mov r9, [rbp + 5*8]
+	
+	mov [r8], r9
+	
+    ;; rax = void
+	mov rax, [L1]
 
-	mov rdi, 8
-	call malloc
-	mov r10, rax
+	popall
+	leave
+	ret
 
-	; r10 - pointer to future car
-	mov [r10], r9
+%endmacro
 
-	sub r10, start_of_data
-	shl r10, 34
+%macro our_set_cdr 0
 
-	; r11 - value of the pair
-	mov r11, [r8]
-	; r11 - reset 30 left bits
-	shl r11, 30
-	shr r11, 30
+  	push rbp
+	mov rbp, rsp
+	pushall
+	
+	;; r10 - num params
+	mov r10, [rbp + 3*8]
+    cmp r10, 2
+    jne ERROR
+    
+	;; r8 - pointer to car pair
+	mov r8, [rbp + 4*8]
+    mov r10, r8
+    TYPE r10
+    cmp r10, T_PAIR
+    jne ERROR
+    DATA_LOWER r8
+    add r8, start_of_data
+    
+	;; r9 - future cdr
+	mov r9, [rbp + 5*8]
+	
+	mov [r8], r9
+	
+    ;; rax = void
+	mov rax, [L1]
 
-	or r11, r10
-	mov [r8], r11
+	popall
+	leave
+	ret
 
+%endmacro
+
+%macro our_string_set 0
+
+  	push rbp
+	mov rbp, rsp
+	pushall
+	
+	;; r11 - num params
+	mov r11, [rbp + 3*8]
+    cmp r11, 3
+    jne ERROR
+    
+	;; r8 - string, r9 - index, r10 - char , r13 - length
+	mov r8, [rbp + 4*8 + 0*8]
+    mov r12, r8
+    TYPE r12
+    cmp r12, T_STRING
+    jne ERROR
+    
+    mov r13, r8
+    DATA_UPPER r13
+    
+    
+    mov r9, [rbp + 4*8 + 1*8]
+    mov r12, r9
+    TYPE r12
+    cmp r12, T_INTEGER
+    jne ERROR
+    DATA r9
+    cmp r9, r13
+    jge ERROR
+    cmp r9, 0
+    jl ERROR
+    
+    mov r10, [rbp + 4*8 + 2*8]
+    mov r12, r10
+    TYPE r12
+    cmp r12, T_CHAR
+    jne ERROR
+    
+    
+    DATA_LOWER r8
+    add r8, start_of_data
+    DATA r10
+    
+	
+	mov [r8 + r9], r10b
+	
+    ;; rax = void
+	mov rax, [L1]
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_vector_set 0
+
+  	push rbp
+	mov rbp, rsp
+	pushall
+	
+	;; r11 - num params
+	mov r11, [rbp + 3*8]
+    cmp r11, 3
+    jne ERROR
+    
+	;; r8 - vector, r9 - index, r10 - new value , r13 - length, r14 - pointer to location in vector
+	mov r8, [rbp + 4*8 + 0*8]
+    mov r12, r8
+    TYPE r12
+    cmp r12, T_VECTOR
+    jne ERROR
+    
+    mov r13, r8
+    DATA_UPPER r13
+    
+    
+    mov r9, [rbp + 4*8 + 1*8]
+    mov r12, r9
+    TYPE r12
+    cmp r12, T_INTEGER
+    jne ERROR
+    DATA r9
+    cmp r9, r13
+    jge ERROR
+    cmp r9, 0
+    jl ERROR
+    
+    mov r10, [rbp + 4*8 + 2*8]
+    
+    DATA_LOWER r8
+    add r8, start_of_data
+    
+	
+	mov r14, [r8 + 8*r9] 
+	mov [r14], r10
+	
+    ;; rax = void
 	mov rax, [L1]
 
 	popall
@@ -2281,6 +2420,105 @@ write_sob_if_not_void:
 	ret
 	
 %endmacro
+
+%macro our_apply 0
+
+	push rbp
+	mov rbp, rsp
+
+	mov r8, [rbp + 3*8]
+	cmp r8, 2
+	jne ERROR
+
+	;; r8 - old rbp, r9 - apply ret address 
+	;; r10 - closure, r11 - list of params
+
+	mov r8, [rbp]
+	mov r9, [rbp + 1*8]
+	mov r10, [rbp + 4*8]
+	mov r11, [rbp + 5*8]
+
+	;; r10 - closure code
+	;; rbx - closure env
+
+	mov rbx, r10
+
+	CLOSURE_ENV rbx
+	CLOSURE_CODE r10
+
+	;; r12 - list len, r13 - iterable list
+	mov r12, 0
+	mov r13, r11
+
+	.list_len_loop:
+	mov r14, r13
+	TYPE r14
+	cmp r14, T_NIL
+	je .len_done
+	inc r12
+	CDR r13
+	jmp .list_len_loop
+
+	.len_done:
+
+	mov r13, r11
+
+	;; rcx - pointer to the stack place for the param
+	mov rcx, r12
+	neg rcx
+	dec rcx
+
+	.push_list_params_loop:
+	cmp rcx, -1
+	je .push_done
+	mov r14, r13
+	CAR r14
+	mov [rbp + rcx*8], r14
+	inc rcx
+	CDR r13
+	jmp .push_list_params_loop
+
+	.push_done:
+	mov qword [rbp + rcx*8], 0
+
+	mov rcx, r12
+	neg rcx
+	dec rcx
+	mov r14, -1
+
+	lea rsp, [rsp + rcx*8]
+
+	.override_apply_frame:
+	cmp r14, rcx
+	jl .override_done
+	mov r13, qword [rbp + r14*8]
+	mov [rbp + r14*8 + 7*8], r13
+	dec r14
+	jmp .override_apply_frame
+
+	.override_done:
+
+	;; push new num of params
+	mov [rbp + r14*8 + 7*8], r12
+	dec r14
+
+	;; push closure env
+	mov [rbp + r14*8 + 7*8], rbx
+	dec r14	
+
+	;; push apply ret address
+	mov [rbp + r14*8 + 7*8], r9
+
+	;; update rsp
+	lea rsp, [rbp + r14*8 + 7*8]
+
+	;; update rbp
+	mov rbp, r8
+
+	jmp r10
+
+%endmacro
+
 
 section .data
 .newline:
