@@ -41,8 +41,14 @@
         ("denominator" NULL denominator)
         ("integer_to_char" NULL integer->char)
         ("make_string" NULL make-string)
+        ("make_vector" NULL make-vector)
+        ("numerator" NULL numerator)
+        ("string_length" NULL string-length)
+        ("vector_length" NULL vector-length)
+        ("string_ref" NULL string-ref)
         ("not" NULL not)
         ("set_car" NULL set-car!)
+        ("remainder" NULL remainder)
 		))
 (set! symbol-table 
 	'(
@@ -235,6 +241,19 @@
 																to-add 
 																(cons (car orig) (loop (cdr orig)))))))
 										(loop src))))
+										
+                '(define zero? (lambda (n) (= n 0)))
+										
+                '(define list (lambda l
+                                    (letrec ((loop
+                                                (lambda (lst)
+                                                    (if (null? lst)
+                                                        '()
+                                                        (cons (car lst) (loop (cdr lst)))))))
+                                            (loop l))))
+                                            
+                '(define rational? number?)
+
 				
 				))))
 
