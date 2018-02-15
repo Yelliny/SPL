@@ -283,8 +283,34 @@
 				(gen-string-ref depth) "mov [string_ref], rax\n"
 				(gen-vector-ref depth) "mov [vector_ref], rax\n"
 				(gen-not depth) "mov [not], rax\n"
-				;(gen-set-car! depth) "mov [set_car], rax\n"
+				(gen-remainder depth) "mov [remainder], rax\n"
+				(gen-set-car! depth) "mov [set_car], rax\n"
+				(gen-set-cdr! depth) "mov [set_cdr], rax\n"
+				(gen-string-set! depth) "mov [string_set], rax\n"
+				(gen-vector-set! depth) "mov [vector_set], rax\n"
 				)))
+				
+(define gen-vector-set!
+	(lambda (depth)
+		(let* ((code-label (string-append "vector_set_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_vector_set\n"
+			 code-label "_end:\n\n")))
+		str)))				
+				
+(define gen-string-set!
+	(lambda (depth)
+		(let* ((code-label (string-append "string_set_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_string_set\n"
+			 code-label "_end:\n\n")))
+		str)))					
 				
 (define gen-vector-ref
 	(lambda (depth)
@@ -297,6 +323,17 @@
 			 code-label "_end:\n\n")))
 		str)))				
 
+(define gen-remainder
+	(lambda (depth)
+		(let* ((code-label (string-append "remainder_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_remainder\n"
+			 code-label "_end:\n\n")))
+		str)))	
+
 (define gen-set-car!
 	(lambda (depth)
 		(let* ((code-label (string-append "set_car_" (number->string (get-inc-counter))))
@@ -307,6 +344,17 @@
 			"our_set_car\n"
 			 code-label "_end:\n\n")))
 		str)))	
+		
+(define gen-set-cdr!
+	(lambda (depth)
+		(let* ((code-label (string-append "set_cdr_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_set_cdr\n"
+			 code-label "_end:\n\n")))
+		str)))		
 				
 (define gen-not
 	(lambda (depth)
