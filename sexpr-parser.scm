@@ -1,4 +1,4 @@
-(load "pc.scm")
+;(load "pc.scm")
 
 (define <sexpr>
 	(new

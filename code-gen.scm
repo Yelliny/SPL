@@ -37,7 +37,6 @@
 			emtsalog
 			runtime-code
 			the-magnificant-code
-			epilog
 			))))
 
 (define gen-epilog
