@@ -2200,6 +2200,44 @@ write_sob_if_not_void:
 	ret
 	
 %endmacro
+
+%macro our_vector 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;; r8 - num of params
+	mov r8, [rbp + 3*8]
+
+	;; r9 - pointer to params addresses array
+	mov edi, 8
+	call malloc
+	mov r9, rax
+
+	mov r15, 0
+
+	.malloc_loop:
+	cmp r15, r8
+	je .done
+	;; r10 - current param
+	mov r10, qword [rbp + 4*8 + r15*8]
+	mov edi, 8
+	call malloc
+	mov [rax], r10
+	mov [r9 + 8*r15], rax
+	inc r15
+	jmp .malloc_loop
+
+	.done:
+	make_lit_vector_runtime r8, r9
+	mov rax, r8
+
+	popall
+	leave
+	ret
+
+%endmacro
 	
 %macro our_set_car 0
 
@@ -2516,6 +2554,35 @@ write_sob_if_not_void:
 	mov rbp, r8
 
 	jmp r10
+
+%endmacro
+
+%macro our_eq 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r8, [rbp + 3*8]
+	cmp r8, 2
+	jne ERROR
+
+	mov r8, [rbp + 4*8]
+	mov r9, [rbp + 5*8]
+
+	cmp r8, r9
+	je .equal
+
+	mov rax, [L4]
+	jmp .end
+
+	.equal:
+	mov rax, [L3]
+
+	.end:
+	popall
+	leave
+	ret
 
 %endmacro
 
