@@ -1,4 +1,4 @@
-(load "qq.scm")
+;(load "qq.scm")
 
 (define parse
   (lambda (expr)

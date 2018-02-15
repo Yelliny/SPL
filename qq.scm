@@ -3,7 +3,7 @@
 ;;;
 ;;; Programmer: Mayer Goldberg, 2016
 
-(load "pattern-matcher.scm")
+;(load "pattern-matcher.scm")
 
 ;;;
 

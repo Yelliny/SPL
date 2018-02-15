@@ -1,7 +1,9 @@
+
 ;; (load "sexpr-parser.scm")
 ;; (load "tag-parser.scm")
 ;; (load "semantic-analyzer.scm")
 ;; (load "code-gen.scm")
+
 
 (set! constants-table 
 	`(
@@ -313,14 +315,13 @@
 		(let* ((file (file->list input))
 			(program (pipeline file))
 			(runtime (runtime-functions-scm-code))
-			;(merged-program (append runtime program)))
-			(merged-program program))
+			(merged-program (append runtime program)))
 			;(display runtime) (newline) (newline)
 			;(display program) (newline) (newline)
 			;(display merged-program) (newline) (newline)
 			(build-constants-table merged-program)
 			(build-globals-set-table merged-program)
-			(display constants-table) (newline)
+			;(display constants-table) (newline)
 			;(display symbol-table) (newline)
 			;(display global-table) (newline)
 			(call-with-output-file output
