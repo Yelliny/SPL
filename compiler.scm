@@ -268,6 +268,37 @@
                                                             0
                                                             (+ 1 (list_length (cdr l)))))))
                                                 (loop lst))))
+                                                
+               '(define mymapyuval 
+                    (lambda (f lsts)
+                        (letrec ((loop
+                                    (lambda (lsts)
+                                        (if (null? lsts)
+                                            '()
+                                            (cons (f (car lsts))
+                                                    (loop (cdr lsts)))))))
+                                (loop lsts))))
+                                                
+                '(define map 
+                    (lambda (f first . rest)
+                        (letrec ((loop
+                                    (lambda (lsts)
+                                        (if (one_is_null? lsts)
+                                            '()
+                                            (cons (apply f (mymapyuval car lsts))
+                                                    (loop (mymapyuval cdr lsts)))))))
+                                (loop (cons first rest)))))
+
+                    
+                '(define one_is_null?
+                    (lambda (lsts)
+                        (letrec ((loop 
+                                    (lambda (lsts)
+                                        (and (not (null? lsts))
+                                            (if (null? (car lsts))
+                                                #t
+                                                (loop (cdr lsts)))))))
+                                (loop lsts))))
 
 				
 				))))
