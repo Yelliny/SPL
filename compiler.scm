@@ -54,6 +54,8 @@
         ("string_set" NULL string-set!)
         ("vector_set" NULL vector-set!)
         ("apply" NULL apply)
+        ("eq?" NULL eq?)
+        ("vector" NULL vector)
 		))
 (set! symbol-table 
 	'(

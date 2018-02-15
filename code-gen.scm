@@ -289,7 +289,33 @@
 				(gen-string-set! depth) "mov [string_set], rax\n"
 				(gen-vector-set! depth) "mov [vector_set], rax\n"
 				(gen-apply depth) "mov [apply], rax\n"
+				(gen-eq depth) "mov [eq?], rax\n"
+				(gen-vector depth) "mov [vector], rax\n"
 				)))
+
+(define gen-vector
+	(lambda (depth)
+		(let* ((code-label (string-append "vector_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_vector\n"
+			 code-label "_end:\n\n")))
+		str)))
+
+
+(define gen-eq
+	(lambda (depth)
+		(let* ((code-label (string-append "eq_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_apply\n"
+			 code-label "_end:\n\n")))
+		str)))		
+
 
 (define gen-apply
 	(lambda (depth)
