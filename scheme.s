@@ -1963,6 +1963,7 @@ write_sob_if_not_void:
 	cmp r10, T_INTEGER
 	jne ERROR
 	
+
 	;; check if length < 0
 	DATA r8
 	cmp r8, 0
@@ -2012,7 +2013,6 @@ write_sob_if_not_void:
 	
 %endmacro
 
-
 %macro our_length 1
 
 	push rbp
@@ -2021,11 +2021,55 @@ write_sob_if_not_void:
 
 	mov r10, [rbp + 3*8]
 	cmp r10, 1
+  --------------------
+
+
+%macro our_make_vector 0
+  	push rbp
+	mov rbp, rsp
+	pushall
+	mov r10, [rbp + 3*8]
+	cmp r10, 2
+
 	jne ERROR
 	
 	mov r8, [rbp + 4*8]
 	mov r10, r8
 	TYPE r10
+
+	cmp r10, T_INTEGER
+	jne ERROR
+	
+	DATA r8
+	cmp r8, 0
+	jl ERROR
+	
+	mov r9, [rbp + 5*8]
+	DATA r9
+
+    ; malloc size of string length
+	mov rax, 8
+	mul r8
+	mov rdi, rax
+	call malloc
+	
+	;; r11 - pointer to malloc , r12 - counter
+	mov r11, rax
+	mov r12, 0
+	
+	;; fill string with chars
+	.loop:
+	cmp r12, r8
+	je .endloop
+	mov [r11 + r12*8], r9
+	inc r12
+	jmp .loop
+	
+	.endloop:
+	make_lit_vector_runtime r8, r11
+    mov rax, r8
+
+=======
 	cmp r10, %1
 	jne ERROR
 	
@@ -2041,148 +2085,6 @@ write_sob_if_not_void:
 	
 %endmacro
 
-%macro our_string_ref 0
-
-	push rbp
-	mov rbp, rsp
-	pushall
-
-	;;; r8 - string , r9 - index, r10 - type
-	mov r10, [rbp + 3*8]
-	cmp r10, 2
-	jne ERROR
-	
-	mov r8, [rbp + 4*8]
-	mov r10, r8
-	TYPE r10
-	cmp r10, T_STRING
-	jne ERROR
-	
-	mov r9, [rbp + 5*8]
-	mov r10, r9
-	TYPE r10
-	cmp r10, T_INTEGER
-	jne ERROR
-	DATA r9
-	
-	;; check index < n
-	mov r10, r8
-	DATA_UPPER r10
-	cmp r10, r9
-	jle ERROR
-	
-	
-	;; get the char at index r9
-	DATA_LOWER r8
-	add r8, start_of_data
-	mov r10, [r8 + r9]
-	make_lit_char_runtime r10
-    mov rax, r10
-
-	
-	popall
-	leave
-	ret
-	
-%endmacro     
-
-%macro our_vector_ref 0
-
-	push rbp
-	mov rbp, rsp
-	pushall
-
-	;;; r8 - vector , r9 - index, r10 - type
-	mov r10, [rbp + 3*8]
-	cmp r10, 2
-	jne ERROR
-	
-	mov r8, [rbp + 4*8]
-	mov r10, r8
-	TYPE r10
-	cmp r10, T_VECTOR
-	jne ERROR
-	
-	mov r9, [rbp + 5*8]
-	mov r10, r9
-	TYPE r10
-	cmp r10, T_INTEGER
-	jne ERROR
-	DATA r9
-	
-	;; check index < n
-	mov r10, r8
-	DATA_UPPER r10
-	cmp r10, r9
-	jle ERROR
-	
-	
-	;; get the char at index r9
-	DATA_LOWER r8
-	add r8, start_of_data
-	mov r10, [r8 + r9*8]
-    mov rax, [r10]
-
-	
-	popall
-	leave
-	ret
-	
-%endmacro  
-
-%macro our_make_vector 0
-  	push rbp
-	mov rbp, rsp
-	pushall
-	mov r10, [rbp + 3*8]
-	cmp r10, 2
-	jne ERROR
-	
-	mov r8, [rbp + 4*8]
-	mov r10, r8
-	TYPE r10
-	cmp r10, T_INTEGER
-	jne ERROR
-	
-	DATA r8
-	cmp r8, 0
-	jl ERROR
-	
-	mov r9, [rbp + 5*8]
-	mov rdi, 8
-	call malloc
-	mov r13, rax
-	mov [r13], r9
-
-    ; malloc size of string length
-	mov rax, 8
-	mul r8
-	mov rdi, rax
-	;;add rdi, 8
-	call malloc
-	
-	;; r11 - pointer to malloc , r12 - counter
-	mov r11, rax
-	mov r12, 0
-	
-	;; fill string with chars
-	.loop:
-	cmp r12, r8
-	je .endloop
-	mov [r11 + r12*8], r13
-	inc r12
-	jmp .loop
-	
-	.endloop:
-	make_lit_vector_runtime r8, r11
-    mov rax, r8
-
-	
-	popall
-	leave
-	ret
-	
-%endmacro
 	
 %macro our_set_car 0
   	push rbp
@@ -2214,6 +2116,50 @@ write_sob_if_not_void:
 	mov [r8], r11
 
 	mov rax, [L1]
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_remainder 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r8, [rbp + 4*8]
+	mov r9, [rbp + 5*8]
+
+	DATA r8
+	DATA r9
+
+	cmp r9, 0
+	jge .sec_arg_positive
+	neg r9
+
+	.sec_arg_positive:
+
+	mov rdx, 0
+	mov rax, r8
+
+	cmp r8, 0
+	jge .positive
+	neg rax
+
+	.positive:
+
+	div r9
+	mov rax, rdx
+
+	cmp r8, 0
+	jge .end
+
+	neg rax
+
+	.end:
+	make_lit_int_runtime rax
 
 	popall
 	leave
