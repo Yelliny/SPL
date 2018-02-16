@@ -27,9 +27,10 @@
 
 (define <PrefixComment>
 	(new
+	(*parser (const (lambda (ch) (char=? ch #\newline))))
 	(*delayed (lambda () <LineComment>))
 	(*delayed (lambda () <PrefixExprComment>))
-	(*disj 2) *star
+	(*disj 3) *star
 	done))
 
 (define <InfixComment>
