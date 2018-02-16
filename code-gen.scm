@@ -27,13 +27,14 @@
 			(the-magnificant-code (fold-left (lambda (init rest)
 				(string-append init (code-gen rest -1) epilog)) "" pe))
 			(consts-code (gen-const-table-asm))
- 			#| (symbol-table-code (gen-symbol-table)) |#
+ 			(symbol-table-code (gen-symbol-table))
  			)
 		(string-append
 			prolog-code
 			consts-code 
 			"\n"
 			global-labels-code
+			symbol-table-code
 			emtsalog
 			runtime-code
 			the-magnificant-code
@@ -98,12 +99,31 @@
 				(display `(code-gen not recognize pe ,pe)) (newline)
 				"code-gen does not recognize you\n")))))
 
-#| (define gen-symbol-table
+(define gen-symbol-table
 	(lambda ()
 		(fold-left (lambda (init curr)
-						(string-append 
-							""))
-		"section .data\nsymbol_table:\n"))) |#
+						(string-append init
+							"mov rdi, 8\n"
+							"call malloc\n"
+							;; address to symbol link
+							"mov r8, rax\n"
+							;; high 30 bits points to symbol string
+							"mov r10, " (cadr curr) "\n"
+							"sub r10, start_of_data\n"
+							"shl r10, 34\n"
+							;; 4 low bits are T_LINK
+							"or r10, T_LINK\n"
+							
+							"mov [r8], r10\n"
+							;; r11 - 30 bits pointer to symbol link
+							"mov r11, r8\n"
+							"sub r11, start_of_data\n"
+							"shl r11, 34\n"
+							"shr r11, 30\n"
+							"or [r12], r11\n"
+							"mov r12, r8\n"
+							))
+		"\nsection .data\nsymbol_table: dq 0\nsection .text\nmov r12, symbol_table\n" symbol-table))) 
 
 (define gen-box-get
 	(lambda (pe depth)
@@ -182,7 +202,7 @@
 	(lambda (pe depth)
 		(if (> depth -1)
 			(ERROR "define inside a function")
-			(let* ((var-name (get-fvar-label (cadar pe)))
+			(let* ((var-name (symbol->string (cadar pe)))
 					(val (cadr pe)))
 				(string-append 
 					(code-gen val depth) 
@@ -290,7 +310,19 @@
 				(gen-apply depth) "mov [apply], rax\n"
 				(gen-eq depth) "mov [eq?], rax\n"
 				(gen-vector depth) "mov [vector], rax\n"
+				(gen-string-symbol depth) "mov [string_symbol], rax\n"
 				)))
+
+(define gen-string-symbol
+	(lambda (depth)
+		(let* ((code-label (string-append "string_symbol_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_string_symbol\n"
+			 code-label "_end:\n\n")))
+		str)))
 
 (define gen-vector
 	(lambda (depth)

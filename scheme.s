@@ -15,6 +15,7 @@
 %define T_CLOSURE 9
 %define T_PAIR 10
 %define T_VECTOR 11
+%define T_LINK 12
 
 %define CHAR_NUL 0
 %define CHAR_TAB 9
@@ -46,6 +47,38 @@
 %macro make_lit_char_runtime 1
 	shl %1, TYPE_BITS
 	or %1, T_CHAR
+%endmacro
+
+%macro pushall 0
+	push rbx
+	push rcx
+	push rdx
+	push rsi
+	push rdi
+	push r8
+	push r9
+	push r10
+	push r11
+	push r12
+	push r13
+	push r14
+	push r15
+%endmacro
+
+%macro popall 0
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+	pop rdi
+	pop rsi
+	pop rdx
+	pop rcx
+	pop rbx
 %endmacro
 
 %macro make_lit_string_runtime 2
@@ -378,6 +411,57 @@ section .data
 .undefined:
 	db "#<undefined>", 0
 
+
+string_cmp:
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r8, [rbp + 2*8]
+	mov r9, [rbp + 3*8]
+
+	;; r10 - string size, r11 - pointer to chars
+	mov r10, r8
+	mov r11, r8
+	DATA_UPPER r10
+	DATA_LOWER r11
+	add r11, start_of_data
+
+	;; r12 - string size, r13 - pointer to chars
+	mov r12, r9
+	mov r13, r9
+	DATA_UPPER r12
+	DATA_LOWER r13
+	add r13, start_of_data
+
+	;; cmp sizes - if not equal return false
+	cmp r10, r12
+	jne .false
+
+	mov r8, 0
+	.loop:
+	cmp r8, r10
+	je .true
+	;; cmp chars
+	mov r9b, byte [r11 + r8]
+	mov r14b, byte [r13 + r8]
+	cmp r14b, r9b
+	jne .false
+	inc r8
+	jmp .loop
+
+	.false:
+	mov rax, 0
+	jmp .end
+
+	.true:
+	mov rax, 1
+
+	.end:
+
+	popall
+	leave 
+	ret
 
 write_sob_integer:
 	push rbp
@@ -911,38 +995,6 @@ write_sob_if_not_void:
 	pop rdi
 	pop rsi
 	pop rax
-%endmacro
-
-%macro pushall 0
-	push rbx
-	push rcx
-	push rdx
-	push rsi
-	push rdi
-	push r8
-	push r9
-	push r10
-	push r11
-	push r12
-	push r13
-	push r14
-	push r15
-%endmacro
-
-%macro popall 0
-	pop r15
-	pop r14
-	pop r13
-	pop r12
-	pop r11
-	pop r10
-	pop r9
-	pop r8
-	pop rdi
-	pop rsi
-	pop rdx
-	pop rcx
-	pop rbx
 %endmacro
 
 %macro our_plus 0
@@ -2658,9 +2710,31 @@ write_sob_if_not_void:
 	mov r8, [rbp + 4*8]
 	mov r9, [rbp + 5*8]
 
+	mov r10, r8
+	mov r11, r9
+	TYPE r10
+	TYPE r11
+	cmp r10, r11
+	jne .false
+
+	cmp r10, T_SYMBOL
+	jne .regular_eq
+	
+	;; case of symbols - cmp strings
+	push r8
+	push r9
+	call string_cmp
+	add rsp, 2*8
+	cmp rax, 1
+	je .equal
+	jmp .false
+
+	.regular_eq:
+
 	cmp r8, r9
 	je .equal
 
+	.false:
 	mov rax, [L4]
 	jmp .end
 
@@ -2674,6 +2748,92 @@ write_sob_if_not_void:
 
 %endmacro
 
+
+%macro our_string_symbol 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;; r12 - pointer to curr link
+	mov r12, symbol_table
+
+	;; r9 - string
+	mov r9, [rbp + 4*8]
+
+	;; first link in r8
+	mov r8, [symbol_table]
+
+	cmp r8, 0
+	je .add_symbol
+
+	.loop:
+	;; r10 - pointer to next link, r11 - link string
+	mov r10, r8
+	mov r11, r8
+	DATA_LOWER r10
+	add r10, start_of_data
+	DATA_UPPER r11
+
+	cmp r11, 0
+	je .skip
+
+	add r11, start_of_data
+	mov r11, [r11]
+
+	;; update pointer to curr link
+	mov r12, r10
+
+	push r11
+	push r9
+	call string_cmp
+	pop r9
+	pop r11
+
+	cmp rax, 1
+	je .end
+
+	.skip:
+
+	cmp r10, start_of_data
+	je .add_symbol
+
+	mov r8, [r10]
+	jmp .loop
+
+	.add_symbol:
+	mov rdi, 8
+	call malloc 
+	mov r15, rax
+	mov [r15], r9
+
+	;; rbx - new link
+	mov rbx, r15
+	sub rbx, start_of_data
+	shl rbx, 34
+	or rbx, T_LINK
+	mov rdi, 8
+	call malloc
+	mov [rax], rbx
+	sub rax, start_of_data
+	shl rax, TYPE_BITS
+	or r8, rax
+
+	;; update prev link with a pointer to new link
+	mov [r12], r8
+
+	.end:
+	shr r9, TYPE_BITS
+	shl r9, TYPE_BITS
+	or r9, T_SYMBOL
+
+	mov rax, r9
+
+	popall
+	leave
+	ret
+
+%endmacro
 
 section .data
 .newline:
