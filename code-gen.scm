@@ -182,7 +182,7 @@
 	(lambda (pe depth)
 		(if (> depth -1)
 			(ERROR "define inside a function")
-			(let* ((var-name (symbol->string (cadar pe)))
+			(let* ((var-name (get-fvar-label (cadar pe)))
 					(val (cadr pe)))
 				(string-append 
 					(code-gen val depth) 
@@ -311,7 +311,7 @@
 			(gen-closure-code depth code-label)
 			"jmp " code-label "_end\n"
 			"\n" code-label ":\n"
-			"our_apply\n"
+			"our_eq\n"
 			 code-label "_end:\n\n")))
 		str)))		
 
@@ -1183,7 +1183,7 @@
 		  			((equal? type "T_STRING")
 		  				(string-append "MAKE_LITERAL_STRING \"" (caddr details) "\""))
 		  			((equal? type "T_SYMBOL")
-		  				)
+                        (string-append "MAKE_LITERAL_SYMBOL \"" (symbol->string (cadr details)) "\""))
 			  ))))
 
 (define get-const-label
