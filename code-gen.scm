@@ -202,7 +202,7 @@
 	(lambda (pe depth)
 		(if (> depth -1)
 			(ERROR "define inside a function")
-			(let* ((var-name (symbol->string (cadar pe)))
+			(let* ((var-name (get-fvar-label (cadar pe)))
 					(val (cadr pe)))
 				(string-append 
 					(code-gen val depth) 
