@@ -2317,7 +2317,8 @@ write_sob_if_not_void:
 	;; get the char at index r9
 	DATA_LOWER r8
 	add r8, start_of_data
-	mov r10, [r8 + r9]
+	mov r10, 0
+	mov r10b, [r8 + r9]
 	make_lit_char_runtime r10
     mov rax, r10
 
