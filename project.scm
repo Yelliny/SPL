@@ -269,7 +269,8 @@
 	(lambda ()
 		(map runtime-pipeline 
 			(list 
-				'(define append (lambda a 
+				'(define append (lambda a
+									(if (= (list_length a) 1) (car a) 
 									(let ((res (car a))
 											(to-add-list (cdr a)))
 										(letrec ((loop (lambda (curr to-add)
@@ -277,12 +278,12 @@
 																(add_to_list curr '())
 																(loop (add_to_list curr (car to-add)) (cdr to-add))))))
 											(loop res to-add-list)
-															))))
+															)))))
 				'(define add_to_list (lambda (src to-add)
 										(letrec ((loop (lambda (orig)
 															(if (null? orig) 
 																to-add 
-																(cons (car orig) (loop (cdr orig)))))))
+																(if (pair? orig) (cons (car orig) (loop (cdr orig))) orig)))))
 										(loop src))))
 										
                 '(define zero? (lambda (n) (= n 0)))
