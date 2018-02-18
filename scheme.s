@@ -1377,11 +1377,13 @@ write_sob_if_not_void:
     
     mov rax, 0 ; r15 - counter, r14 - n
     mov r14, [rbp + 3*8]
-    mov r15, 1
+    
 
     ; if n == 1 , special case of one param
     cmp r14, 1
     je .one_param
+    
+    mov r15, 1
     
     ; r10 - curr param, rbx - type
     mov r10, [rbp + 4*8]
@@ -1402,6 +1404,7 @@ write_sob_if_not_void:
     .one_param:
     mov r10, 1
     mov r11, 1
+    mov r15, 0
     
 
     .loop: ; loop
@@ -1673,7 +1676,7 @@ write_sob_if_not_void:
     jge .ret_false
     
     mov r10, r8
-    mov r11, r9
+    mov r11, r13
 
 
 	;;; reduce r10/r11 with gcd
@@ -1786,7 +1789,7 @@ write_sob_if_not_void:
     jle .ret_false
     
     mov r10, r8
-    mov r11, r9
+    mov r11, r13
 
 
 	;;; reduce r10/r11 with gcd
@@ -1899,7 +1902,7 @@ write_sob_if_not_void:
     jne .ret_false
     
     mov r10, r8
-    mov r11, r9
+    mov r11, r13
 
 
 	;;; reduce r10/r11 with gcd
