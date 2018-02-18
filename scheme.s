@@ -34,6 +34,8 @@
 
 %macro make_lit_frac_runtime 2
 	shl %1, NUMERATOR_BITS
+	shl %2, 34
+	shr %2, 34
 	or %1, %2
 	shl %1, TYPE_BITS
 	or %1, T_FRACTION
@@ -326,13 +328,21 @@ gcd:
 		cmp r9, 0
 		je .end_loop
 		mov rax, r8
-		div r9
+		cmp rax, 0
+		jge .divii
+		mov rdx, -1
+		.divii:
+		idiv r9
 		mov r8, r9
 		mov r9, rdx
 		jmp .loop
 
 	.end_loop:
 		mov rax, r8
+		cmp rax, 0
+		jge .pos
+		neg rax
+		.pos:
 		pop rdx
 		pop r9
 		pop r8
@@ -357,6 +367,13 @@ write_sob_fraction:
 	mov r10, r8
 	DATA_LOWER r10
 
+	cmp r10, 0
+	jge .pos
+	neg rsi
+	neg r10
+
+	.pos:
+
 	push qword rsi
 	push qword r10
 	call gcd
@@ -367,12 +384,20 @@ write_sob_fraction:
 
 	mov rdx, 0
 	mov rax, rsi
-	div r9
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv r9
 	mov rsi, rax
 
 	mov rdx, 0
 	mov rax, r10
-	div r9
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv r9
 	mov r10, rax
 
 	pop r9
@@ -1033,16 +1058,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	;;; r13 - common denominator
 
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
 	add r10, rax
 
 	;;; r10 - final numerator before gcd
@@ -1064,12 +1089,22 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv
+	mov rdx, -1
+	.idiv:
+	idiv rbx
 	mov r10, rax
+
+	mov rdx, 0
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	cmp rax, 0
+	jge .div
+	mov rdx, -1
+	.div:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1078,7 +1113,11 @@ write_sob_if_not_void:
 
 	mov rdx, 0
 	mov rax, r10
-	div r11
+	cmp rax, 0
+	jge .posi
+	mov rdx, -1
+	.posi:
+	idiv r11
 	cmp rdx, 0
 	je .is_int
 	.is_frac:
@@ -1163,16 +1202,16 @@ write_sob_if_not_void:
 	.after_2:
 
 	mov rax, r11
-	mul r9
+	imul r9
 
 	;;; r13 - common denominator
 
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
 	sub r10, rax
 
 	;;; r10 - final numerator before gcd
@@ -1194,12 +1233,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - numerator divided by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - denominator divided by gcd
+	mov rdx, 0
 	mov rax, r11
-	div rbx
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1208,7 +1256,11 @@ write_sob_if_not_void:
 
 	mov rdx, 0
 	mov rax, r10
-	div r11
+	cmp rax, 0
+	jge .idiv2
+	mov rdx, -1
+	.idiv2:
+	idiv r11
 	cmp rdx, 0
 	je .is_int
 	.is_frac:
@@ -1261,10 +1313,10 @@ write_sob_if_not_void:
     
     .after_all:
     mov rax, r8 ; r10 <- r10 * r8
-    mul r10
+    imul r10
     mov r10, rax
     mov rax, r9 ; r11 <- r11 * r9
-    mul r11
+    imul r11
     mov r11, rax
     
 
@@ -1275,11 +1327,19 @@ write_sob_if_not_void:
     mov rdx, 0
     mov r12, rax
     mov rax, r10
-    div r12
+    cmp rax, 0
+    jge .idiv0
+    mov rdx, -1
+    .idiv0:
+    idiv r12
     mov r10, rax
     mov rax, r11
     mov rdx, 0
-    div r12
+    cmp rax, 0
+    jge .idiv1
+    mov rdx, -1
+    .idiv1:
+    idiv r12
     mov r11, rax
     inc r15
     jmp .loop
@@ -1287,7 +1347,11 @@ write_sob_if_not_void:
     .endloop:
     mov rdx, 0
     mov rax, r10
-    div r11
+    cmp rax, 0
+    jge .idiv2
+    mov rdx, -1
+    .idiv2:
+    idiv r11
     cmp rdx, 0
     je .is_int
     .is_frac:
@@ -1313,27 +1377,26 @@ write_sob_if_not_void:
     
     mov rax, 0 ; r15 - counter, r14 - n
     mov r14, [rbp + 3*8]
-    
+    mov r15, 1
+
     ; if n == 1 , special case of one param
     cmp r14, 1
     je .one_param
     
     ; r10 - curr param, rbx - type
-    mov r10, [rbp + 4*8 + r15*8]
+    mov r10, [rbp + 4*8]
     mov rbx, r10
     TYPE rbx
     cmp rbx, T_INTEGER
     jne .fraction_0
     DATA_LOWER r10
     mov r11, 1
-    mov r15, 1
     jmp .loop
     
     .fraction_0:
     mov r11, r10
     DATA_UPPER r10
     DATA_LOWER r11
-    mov r15, 1
     jmp .loop
     
     .one_param:
@@ -1363,10 +1426,10 @@ write_sob_if_not_void:
     
     .after_all:
     mov rax, r8 ; r10 <- r10 * r8
-    mul r10
+    imul r10
     mov r10, rax
     mov rax, r9 ; r11 <- r11 * r9
-    mul r11
+    imul r11
     mov r11, rax
     
 
@@ -1377,11 +1440,19 @@ write_sob_if_not_void:
     mov rdx, 0
     mov r12, rax
     mov rax, r10
-    div r12
+    cmp rax, 0
+    jge .idiv0
+    mov rdx, -1
+    .idiv0:
+    idiv r12
     mov r10, rax
     mov rax, r11
     mov rdx, 0
-    div r12
+    cmp rax, 0
+    jge .idiv1
+    mov rdx, -1
+    .idiv1:
+    idiv r12
     mov r11, rax
     inc r15
     jmp .loop
@@ -1389,7 +1460,11 @@ write_sob_if_not_void:
     .endloop:
     mov rdx, 0
     mov rax, r10
-    div r11
+    cmp rax, 0
+    jge .idiv2
+    mov rdx, -1
+    .idiv2:
+    idiv r11
     cmp rdx, 0
     je .is_int
     .is_frac:
@@ -1583,16 +1658,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	; r13 - common denominator
     ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
     mov r8, rax
     cmp r10, r8
     jge .ret_false
@@ -1614,12 +1689,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	mov rdx, 0
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1687,16 +1771,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	; r13 - common denominator
     ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
     mov r8, rax
     cmp r10, r8
     jle .ret_false
@@ -1718,12 +1802,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	mov rdx, 0
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1791,16 +1884,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	; r13 - common denominator
     ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
     mov r8, rax
     cmp r10, r8
     jne .ret_false
@@ -1822,12 +1915,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	mov rdx, 0
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -2351,7 +2453,7 @@ write_sob_if_not_void:
 	mov r8, [rbp + 3*8]
 
 	;; r9 - pointer to params addresses array
-	mov edi, 8
+	lea rdi, [8*r8]
 	call malloc
 	mov r9, rax
 
@@ -2362,7 +2464,7 @@ write_sob_if_not_void:
 	je .done
 	;; r10 - current param
 	mov r10, qword [rbp + 4*8 + r15*8]
-	mov edi, 8
+	mov rdi, 8
 	call malloc
 	mov [rax], r10
 	mov [r9 + 8*r15], rax
@@ -2542,9 +2644,11 @@ write_sob_if_not_void:
     DATA_LOWER r8
     add r8, start_of_data
     
+    mov rdi, 8
+    call malloc
+    mov [rax], r10
 	
-	mov r14, [r8 + 8*r9] 
-	mov [r14], r10
+	mov [r8 + 8*r9], rax 
 	
     ;; rax = void
 	mov rax, [L1]
@@ -2828,6 +2932,35 @@ write_sob_if_not_void:
 	or r9, T_SYMBOL
 
 	mov rax, r9
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_symbol_string 0
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;; r8 - symbol, r9 - type, r10 - n
+	mov r8, [rbp + 4*8]
+	mov r10, [rbp +  3*8]
+	
+	cmp r10, 1
+	jne ERROR
+
+	mov r9, r8
+	TYPE r9
+	cmp r9, T_SYMBOL
+	jne ERROR
+
+	shr r8, TYPE_BITS
+	shl r8, TYPE_BITS
+	or r8, T_STRING 
+
+	mov rax, r8
 
 	popall
 	leave

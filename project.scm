@@ -59,11 +59,13 @@
         ("eq?" NULL eq?)
         ("vector" NULL vector)
         ("string_symbol" NULL string->symbol)
+        ("symbol_string" NULL symbol->string)
 		))
 (set! symbol-table 
 	'(
 	))
 
+	
 
 (define runtime-support
 	'(append apply not < = > + / * -
@@ -183,7 +185,6 @@
 			((symbol? const)
                 (if (not (member const vals))
 					(let ((str-addrs (insert-constant (symbol->string const))))
-						(insert-symbol const)
 						(insert-to-table const `(T_SYMBOL ,const ,str-addrs)))
 					(list-ref labels (index-of vals const))))
 				;(insert-symbol const))
@@ -191,10 +192,22 @@
 				(list-ref labels (index-of vals const)))
 			(else "L0")))))
 			
+(define illegal-chars
+    '(#\! #\- #\> #\< #\^ #\=))
+    
+(set! illegal-counter 0)
+
+(define inc-illegal
+    (lambda ()
+        (set! illegal-counter (+ 1 illegal-counter))
+        (number->string illegal-counter)))
+			
 (define fix-string 
     (lambda (str)
-        (string-replace str #\- #\_)
-        str))
+        (if (fold-left (lambda (init curr) (or init (member curr illegal-chars))) #f (string->list str))
+        (string-append
+            (list->string (filter (lambda (ch) (not (member ch illegal-chars))) (string->list str))) "_" (inc-illegal))
+            str)))
         
 (define string-replace
     (lambda (str cold cnew)
@@ -229,13 +242,11 @@
 		;(display `(inSearch: ,pe)) (newline)
 		(cond
 		 ((and (list? pe) (not (null? pe)) (equal? (car pe) 'define))
-					(insert-global (cdr pe) 'define)
-					;(insert-symbol (cadadr pe))
+					(insert-global (cdr pe) (cadadr pe))
 					(search-global-set (caddr pe))
 					)
 		 ((and (list? pe) (not (null? pe)) (equal? (car pe) 'set) (equal? (caadr pe) 'fvar))
-		 	(insert-global (cdr pe) 'set)
-		 	;(insert-symbol (cadadr pe))
+		 	(insert-global (cdr pe) (cadadr pe))
 		 	(search-global-set (caddr pe)))
 		 ((list? pe) (fold-left (lambda (init curr) (search-global-set curr)) '() pe)))))
 
@@ -336,12 +347,12 @@
 			(runtime (runtime-functions-scm-code))
 			(merged-program (append runtime program)))
 			;(display runtime) (newline) (newline)
-			(display program) (newline) (newline)
+			;(display program) (newline) (newline)
 			;(display merged-program) (newline) (newline)
 			(build-constants-table merged-program)
 			(build-globals-set-table merged-program)
 			;(display constants-table) (newline)
-			(display symbol-table) (newline)
+			;(display symbol-table) (newline)
 			;(display global-table) (newline)
 			(call-with-output-file output
 			(lambda (a)

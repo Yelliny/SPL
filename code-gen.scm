@@ -311,7 +311,19 @@
 				(gen-eq depth) "mov [eq?], rax\n"
 				(gen-vector depth) "mov [vector], rax\n"
 				(gen-string-symbol depth) "mov [string_symbol], rax\n"
+				(gen-symbol-string depth) "mov [symbol_string], rax\n"
 				)))
+
+(define gen-symbol-string
+	(lambda (depth)
+		(let* ((code-label (string-append "symbol_string_" (number->string (get-inc-counter))))
+		(str (string-append
+			(gen-closure-code depth code-label)
+			"jmp " code-label "_end\n"
+			"\n" code-label ":\n"
+			"our_symbol_string\n"
+			 code-label "_end:\n\n")))
+		str)))
 
 (define gen-string-symbol
 	(lambda (depth)

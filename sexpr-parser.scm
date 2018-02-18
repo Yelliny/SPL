@@ -1,9 +1,68 @@
 ;(load "pc.scm")
 
+
+(define <whitespace>
+  (const
+   (lambda (ch)
+     (char<=? ch #\space))))
+
+(define <line-comment>
+    (let ((<end-of-line-comment>
+        (new
+            (*parser (char #\newline))
+            (*parser <end-of-input>)
+            (*disj 2)
+        done)))
+        (new
+            (*parser (char #\;))
+
+            (*parser <any-char>)
+            (*parser <end-of-line-comment>)
+            *diff *star
+
+            (*parser <end-of-line-comment>)
+            (*caten 3)
+        done)))
+
+(define <SexprCommentHelper>
+    (new
+        (*parser (word "#;"))
+        (*delayed (lambda () <sexpr>))
+        (*caten 2)
+    done))
+    
+(define <InfixExpressionHelper>
+    (new
+        (*parser (word "#;"))
+     (*delayed (lambda () <InfixExpression>))
+        (*caten 2)
+    done))
+
+(define <SexprComment>
+  (disj <line-comment>
+	<SexprCommentHelper>))
+
+(define <InfixExpressionComment
+  (disj <line-comment>
+	<InfixExpressionHelper>))
+	
+(define <InfixExpressionSkip>
+  (disj <InfixExpressionComment
+	<whitespace>))
+	
+(define <SexprSkip>
+  (disj <SexprComment>
+	<whitespace>))
+
+
+
+
+
+
 (define <sexpr>
 	(new
-	(*delayed (lambda () <PrefixComment>))
-	(*delayed (lambda () <WhiteSpace>))	
+	(*delayed (lambda () <SexprSkip>)) *star
+	;(*delayed (lambda () <WhiteSpace>))	
 	(*delayed (lambda () <Boolean>))
 	(*delayed (lambda () <Char>))
 	(*delayed (lambda () <Number>))
@@ -19,10 +78,10 @@
 	(*delayed (lambda () <CBName>))
 	(*delayed (lambda () <InfixExtension>))
 	(*disj 14)
-	(*delayed (lambda () <WhiteSpace>))
-	(*delayed (lambda () <PrefixComment>))
-	(*caten 5)
-	(*pack-with (lambda (c1 w1 s w2 c2) s))
+	;(*delayed (lambda () <WhiteSpace>))
+	(*delayed (lambda () <SexprSkip>)) *star
+	(*caten 3)
+	(*pack-with (lambda (c1 s c2) s))
 	done))
 
 (define <PrefixComment>
