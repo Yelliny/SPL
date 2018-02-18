@@ -15,6 +15,7 @@
 %define T_CLOSURE 9
 %define T_PAIR 10
 %define T_VECTOR 11
+%define T_LINK 12
 
 %define CHAR_NUL 0
 %define CHAR_TAB 9
@@ -33,6 +34,8 @@
 
 %macro make_lit_frac_runtime 2
 	shl %1, NUMERATOR_BITS
+	shl %2, 34
+	shr %2, 34
 	or %1, %2
 	shl %1, TYPE_BITS
 	or %1, T_FRACTION
@@ -46,6 +49,38 @@
 %macro make_lit_char_runtime 1
 	shl %1, TYPE_BITS
 	or %1, T_CHAR
+%endmacro
+
+%macro pushall 0
+	push rbx
+	push rcx
+	push rdx
+	push rsi
+	push rdi
+	push r8
+	push r9
+	push r10
+	push r11
+	push r12
+	push r13
+	push r14
+	push r15
+%endmacro
+
+%macro popall 0
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+	pop rdi
+	pop rsi
+	pop rdx
+	pop rcx
+	pop rbx
 %endmacro
 
 %macro make_lit_string_runtime 2
@@ -145,6 +180,13 @@
 
 %macro MAKE_LITERAL_STRING 1+
 	dq (((((%%LstrEnd - %%Lstr) << ((WORD_SIZE - TYPE_BITS) >> 1)) | (%%Lstr - start_of_data)) << TYPE_BITS) | T_STRING)
+	%%Lstr:
+	db %1
+	%%LstrEnd:
+%endmacro
+
+%macro MAKE_LITERAL_SYMBOL 1+
+	dq (((((%%LstrEnd - %%Lstr) << ((WORD_SIZE - TYPE_BITS) >> 1)) | (%%Lstr - start_of_data)) << TYPE_BITS) | T_SYMBOL)
 	%%Lstr:
 	db %1
 	%%LstrEnd:
@@ -286,13 +328,21 @@ gcd:
 		cmp r9, 0
 		je .end_loop
 		mov rax, r8
-		div r9
+		cmp rax, 0
+		jge .divii
+		mov rdx, -1
+		.divii:
+		idiv r9
 		mov r8, r9
 		mov r9, rdx
 		jmp .loop
 
 	.end_loop:
 		mov rax, r8
+		cmp rax, 0
+		jge .pos
+		neg rax
+		.pos:
 		pop rdx
 		pop r9
 		pop r8
@@ -317,6 +367,13 @@ write_sob_fraction:
 	mov r10, r8
 	DATA_LOWER r10
 
+	cmp r10, 0
+	jge .pos
+	neg rsi
+	neg r10
+
+	.pos:
+
 	push qword rsi
 	push qword r10
 	call gcd
@@ -327,12 +384,20 @@ write_sob_fraction:
 
 	mov rdx, 0
 	mov rax, rsi
-	div r9
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv r9
 	mov rsi, rax
 
 	mov rdx, 0
 	mov rax, r10
-	div r9
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv r9
 	mov r10, rax
 
 	pop r9
@@ -371,6 +436,57 @@ section .data
 .undefined:
 	db "#<undefined>", 0
 
+
+string_cmp:
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r8, [rbp + 2*8]
+	mov r9, [rbp + 3*8]
+
+	;; r10 - string size, r11 - pointer to chars
+	mov r10, r8
+	mov r11, r8
+	DATA_UPPER r10
+	DATA_LOWER r11
+	add r11, start_of_data
+
+	;; r12 - string size, r13 - pointer to chars
+	mov r12, r9
+	mov r13, r9
+	DATA_UPPER r12
+	DATA_LOWER r13
+	add r13, start_of_data
+
+	;; cmp sizes - if not equal return false
+	cmp r10, r12
+	jne .false
+
+	mov r8, 0
+	.loop:
+	cmp r8, r10
+	je .true
+	;; cmp chars
+	mov r9b, byte [r11 + r8]
+	mov r14b, byte [r13 + r8]
+	cmp r14b, r9b
+	jne .false
+	inc r8
+	jmp .loop
+
+	.false:
+	mov rax, 0
+	jmp .end
+
+	.true:
+	mov rax, 1
+
+	.end:
+
+	popall
+	leave 
+	ret
 
 write_sob_integer:
 	push rbp
@@ -528,6 +644,93 @@ section .data
 .nil:
 	db "()", 0
 
+write_sob_symbol:
+	push rbp
+	mov rbp, rsp
+
+
+	mov rax, qword [rbp + 8 + 1*8]
+	mov rcx, rax
+	STRING_LENGTH rcx
+	STRING_ELEMENTS rax
+
+.loop:
+	cmp rcx, 0
+	je .done
+	mov bl, byte [rax]
+	and rbx, 0xff
+
+	cmp rbx, CHAR_TAB
+	je .ch_tab
+	cmp rbx, CHAR_NEWLINE
+	je .ch_newline
+	cmp rbx, CHAR_PAGE
+	je .ch_page
+	cmp rbx, CHAR_RETURN
+	je .ch_return
+	cmp rbx, CHAR_SPACE
+	jl .ch_hex
+	
+	mov rdi, .fs_simple_char
+	mov rsi, rbx
+	jmp .printf
+	
+.ch_hex:
+	mov rdi, .fs_hex_char
+	mov rsi, rbx
+	jmp .printf
+	
+.ch_tab:
+	mov rdi, .fs_tab
+	mov rsi, rbx
+	jmp .printf
+	
+.ch_page:
+	mov rdi, .fs_page
+	mov rsi, rbx
+	jmp .printf
+	
+.ch_return:
+	mov rdi, .fs_return
+	mov rsi, rbx
+	jmp .printf
+
+.ch_newline:
+	mov rdi, .fs_newline
+	mov rsi, rbx
+
+.printf:
+	push rax
+	push rcx
+	mov rax, 0
+	call printf
+	pop rcx
+	pop rax
+
+	dec rcx
+	inc rax
+	jmp .loop
+
+.done:
+
+	leave
+	ret
+section .data
+.double_quote:
+	db '"', 0
+.fs_simple_char:
+	db "%c", 0
+.fs_hex_char:
+	db "\x%02x;", 0	
+.fs_tab:
+	db "\t", 0
+.fs_page:
+	db "\f", 0
+.fs_return:
+	db "\r", 0
+.fs_newline:
+	db "\n", 0
+	
 write_sob_string:
 	push rbp
 	mov rbp, rsp
@@ -758,12 +961,6 @@ section	.data
 .fs_space:
 	db " ", 0
 
-write_sob_symbol:
-	push rbp
-	mov rbp, rsp
-
-	leave
-	ret
 	
 
 write_sob_closure:
@@ -825,38 +1022,6 @@ write_sob_if_not_void:
 	pop rax
 %endmacro
 
-%macro pushall 0
-	push rbx
-	push rcx
-	push rdx
-	push rsi
-	push rdi
-	push r8
-	push r9
-	push r10
-	push r11
-	push r12
-	push r13
-	push r14
-	push r15
-%endmacro
-
-%macro popall 0
-	pop r15
-	pop r14
-	pop r13
-	pop r12
-	pop r11
-	pop r10
-	pop r9
-	pop r8
-	pop rdi
-	pop rsi
-	pop rdx
-	pop rcx
-	pop rbx
-%endmacro
-
 %macro our_plus 0
 	push rbp
 	mov rbp, rsp
@@ -893,16 +1058,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	;;; r13 - common denominator
 
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
 	add r10, rax
 
 	;;; r10 - final numerator before gcd
@@ -924,12 +1089,22 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv
+	mov rdx, -1
+	.idiv:
+	idiv rbx
 	mov r10, rax
+
+	mov rdx, 0
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	cmp rax, 0
+	jge .div
+	mov rdx, -1
+	.div:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -938,7 +1113,11 @@ write_sob_if_not_void:
 
 	mov rdx, 0
 	mov rax, r10
-	div r11
+	cmp rax, 0
+	jge .posi
+	mov rdx, -1
+	.posi:
+	idiv r11
 	cmp rdx, 0
 	je .is_int
 	.is_frac:
@@ -1023,16 +1202,16 @@ write_sob_if_not_void:
 	.after_2:
 
 	mov rax, r11
-	mul r9
+	imul r9
 
 	;;; r13 - common denominator
 
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
 	sub r10, rax
 
 	;;; r10 - final numerator before gcd
@@ -1054,12 +1233,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - numerator divided by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - denominator divided by gcd
+	mov rdx, 0
 	mov rax, r11
-	div rbx
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1068,7 +1256,11 @@ write_sob_if_not_void:
 
 	mov rdx, 0
 	mov rax, r10
-	div r11
+	cmp rax, 0
+	jge .idiv2
+	mov rdx, -1
+	.idiv2:
+	idiv r11
 	cmp rdx, 0
 	je .is_int
 	.is_frac:
@@ -1121,10 +1313,10 @@ write_sob_if_not_void:
     
     .after_all:
     mov rax, r8 ; r10 <- r10 * r8
-    mul r10
+    imul r10
     mov r10, rax
     mov rax, r9 ; r11 <- r11 * r9
-    mul r11
+    imul r11
     mov r11, rax
     
 
@@ -1135,11 +1327,19 @@ write_sob_if_not_void:
     mov rdx, 0
     mov r12, rax
     mov rax, r10
-    div r12
+    cmp rax, 0
+    jge .idiv0
+    mov rdx, -1
+    .idiv0:
+    idiv r12
     mov r10, rax
     mov rax, r11
     mov rdx, 0
-    div r12
+    cmp rax, 0
+    jge .idiv1
+    mov rdx, -1
+    .idiv1:
+    idiv r12
     mov r11, rax
     inc r15
     jmp .loop
@@ -1147,7 +1347,11 @@ write_sob_if_not_void:
     .endloop:
     mov rdx, 0
     mov rax, r10
-    div r11
+    cmp rax, 0
+    jge .idiv2
+    mov rdx, -1
+    .idiv2:
+    idiv r11
     cmp rdx, 0
     je .is_int
     .is_frac:
@@ -1173,27 +1377,26 @@ write_sob_if_not_void:
     
     mov rax, 0 ; r15 - counter, r14 - n
     mov r14, [rbp + 3*8]
-    
+    mov r15, 1
+
     ; if n == 1 , special case of one param
     cmp r14, 1
     je .one_param
     
     ; r10 - curr param, rbx - type
-    mov r10, [rbp + 4*8 + r15*8]
+    mov r10, [rbp + 4*8]
     mov rbx, r10
     TYPE rbx
     cmp rbx, T_INTEGER
     jne .fraction_0
     DATA_LOWER r10
     mov r11, 1
-    mov r15, 1
     jmp .loop
     
     .fraction_0:
     mov r11, r10
     DATA_UPPER r10
     DATA_LOWER r11
-    mov r15, 1
     jmp .loop
     
     .one_param:
@@ -1223,10 +1426,10 @@ write_sob_if_not_void:
     
     .after_all:
     mov rax, r8 ; r10 <- r10 * r8
-    mul r10
+    imul r10
     mov r10, rax
     mov rax, r9 ; r11 <- r11 * r9
-    mul r11
+    imul r11
     mov r11, rax
     
 
@@ -1237,11 +1440,19 @@ write_sob_if_not_void:
     mov rdx, 0
     mov r12, rax
     mov rax, r10
-    div r12
+    cmp rax, 0
+    jge .idiv0
+    mov rdx, -1
+    .idiv0:
+    idiv r12
     mov r10, rax
     mov rax, r11
     mov rdx, 0
-    div r12
+    cmp rax, 0
+    jge .idiv1
+    mov rdx, -1
+    .idiv1:
+    idiv r12
     mov r11, rax
     inc r15
     jmp .loop
@@ -1249,7 +1460,11 @@ write_sob_if_not_void:
     .endloop:
     mov rdx, 0
     mov rax, r10
-    div r11
+    cmp rax, 0
+    jge .idiv2
+    mov rdx, -1
+    .idiv2:
+    idiv r11
     cmp rdx, 0
     je .is_int
     .is_frac:
@@ -1443,16 +1658,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	; r13 - common denominator
     ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
     mov r8, rax
     cmp r10, r8
     jge .ret_false
@@ -1474,12 +1689,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	mov rdx, 0
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1547,16 +1771,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	; r13 - common denominator
     ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
     mov r8, rax
     cmp r10, r8
     jle .ret_false
@@ -1578,12 +1802,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	mov rdx, 0
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1651,16 +1884,16 @@ write_sob_if_not_void:
 
 	.after_all:
 	mov rax, r11
-	mul r9
+	imul r9
 
 	; r13 - common denominator
     ; chech if r10/r11 >= r8/r9 , if true- jump to ret_false
 	mov r13, rax
 	mov rax, r10
-	mul r9
+	imul r9
 	mov r10, rax
 	mov rax, r8
-	mul r11
+	imul r11
     mov r8, rax
     cmp r10, r8
     jne .ret_false
@@ -1682,12 +1915,21 @@ write_sob_if_not_void:
 	mov rdx, 0
 	;;; r10 - divide numerator by gcd
 	mov rax, r10
-	div rbx
+	cmp rax, 0
+	jge .idiv0
+	mov rdx, -1
+	.idiv0:
+	idiv rbx
 	mov r10, rax
 
 	;;; r11 - divide denominator by gcd
 	mov rax, r11
-	div rbx
+	mov rdx, 0
+	cmp rax, 0
+	jge .idiv1
+	mov rdx, -1
+	.idiv1:
+	idiv rbx
 	mov r11, rax
 
 	inc r15
@@ -1963,7 +2205,6 @@ write_sob_if_not_void:
 	cmp r10, T_INTEGER
 	jne ERROR
 	
-
 	;; check if length < 0
 	DATA r8
 	cmp r8, 0
@@ -2013,6 +2254,7 @@ write_sob_if_not_void:
 	
 %endmacro
 
+
 %macro our_length 1
 
 	push rbp
@@ -2021,55 +2263,11 @@ write_sob_if_not_void:
 
 	mov r10, [rbp + 3*8]
 	cmp r10, 1
-  --------------------
-
-
-%macro our_make_vector 0
-  	push rbp
-	mov rbp, rsp
-	pushall
-	mov r10, [rbp + 3*8]
-	cmp r10, 2
-
 	jne ERROR
 	
 	mov r8, [rbp + 4*8]
 	mov r10, r8
 	TYPE r10
-
-	cmp r10, T_INTEGER
-	jne ERROR
-	
-	DATA r8
-	cmp r8, 0
-	jl ERROR
-	
-	mov r9, [rbp + 5*8]
-	DATA r9
-
-    ; malloc size of string length
-	mov rax, 8
-	mul r8
-	mov rdi, rax
-	call malloc
-	
-	;; r11 - pointer to malloc , r12 - counter
-	mov r11, rax
-	mov r12, 0
-	
-	;; fill string with chars
-	.loop:
-	cmp r12, r8
-	je .endloop
-	mov [r11 + r12*8], r9
-	inc r12
-	jmp .loop
-	
-	.endloop:
-	make_lit_vector_runtime r8, r11
-    mov rax, r8
-
-=======
 	cmp r10, %1
 	jne ERROR
 	
@@ -2085,36 +2283,375 @@ write_sob_if_not_void:
 	
 %endmacro
 
+%macro our_string_ref 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - string , r9 - index, r10 - type
+	mov r10, [rbp + 3*8]
+	cmp r10, 2
+	jne ERROR
 	
-%macro our_set_car 0
+	mov r8, [rbp + 4*8]
+	mov r10, r8
+	TYPE r10
+	cmp r10, T_STRING
+	jne ERROR
+	
+	mov r9, [rbp + 5*8]
+	mov r10, r9
+	TYPE r10
+	cmp r10, T_INTEGER
+	jne ERROR
+	DATA r9
+	
+	;; check index < n
+	mov r10, r8
+	DATA_UPPER r10
+	cmp r10, r9
+	jle ERROR
+	
+	
+	;; get the char at index r9
+	DATA_LOWER r8
+	add r8, start_of_data
+	mov r10, 0
+	mov r10b, [r8 + r9]
+	make_lit_char_runtime r10
+    mov rax, r10
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro     
+
+%macro our_vector_ref 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;;; r8 - vector , r9 - index, r10 - type
+	mov r10, [rbp + 3*8]
+	cmp r10, 2
+	jne ERROR
+	
+	mov r8, [rbp + 4*8]
+	mov r10, r8
+	TYPE r10
+	cmp r10, T_VECTOR
+	jne ERROR
+	
+	mov r9, [rbp + 5*8]
+	mov r10, r9
+	TYPE r10
+	cmp r10, T_INTEGER
+	jne ERROR
+	DATA r9
+	
+	;; check index < n
+	mov r10, r8
+	DATA_UPPER r10
+	cmp r10, r9
+	jle ERROR
+	
+	
+	;; get the char at index r9
+	DATA_LOWER r8
+	add r8, start_of_data
+	mov r10, [r8 + r9*8]
+    mov rax, [r10]
+
+	
+	popall
+	leave
+	ret
+	
+%endmacro  
+
+%macro our_make_vector 0
   	push rbp
 	mov rbp, rsp
 	pushall
-	;; r8 - pointer to pair
+	mov r11, [rbp + 3*8]
+	cmp r11, 2
+	jg ERROR
+	
+	cmp r11, 1
+	jl ERROR
+	
 	mov r8, [rbp + 4*8]
-
-	;; r9 - future car
+	mov r10, r8
+	TYPE r10
+	cmp r10, T_INTEGER
+	jne ERROR
+	
+	;; check if length < 0
+	DATA r8
+	cmp r8, 0
+	jl ERROR
+	
+	cmp r11, 1
+	je .one_param
+	
+	;; two params - r9 holds param
 	mov r9, [rbp + 5*8]
-
+	jmp .malloc
+	
+	;; one param, r9  = (0, T_INTEGER)
+	.one_param:
+	mov r9, 0
+	make_lit_int_runtime r9
+	
+	;; malloc address to param
+	.malloc:
 	mov rdi, 8
 	call malloc
-	mov r10, rax
+	mov r13, rax
+	mov [r13], r9
 
-	; r10 - pointer to future car
-	mov [r10], r9
+    ; malloc size of vector length
+	mov rax, 8
+	mul r8
+	mov rdi, rax
+	;;add rdi, 8
+	call malloc
+	
+	;; r11 - pointer to malloc , r12 - counter
+	mov r11, rax
+	mov r12, 0
+	
+	;; fill vector with addresses
+	.loop:
+	cmp r12, r8
+	je .endloop
+	mov [r11 + r12*8], r13
+	inc r12
+	jmp .loop
+	
+	.endloop:
+	make_lit_vector_runtime r8, r11
+    mov rax, r8
 
-	sub r10, start_of_data
-	shl r10, 34
+	
+	popall
+	leave
+	ret
+	
+%endmacro
 
-	; r11 - value of the pair
-	mov r11, [r8]
-	; r11 - reset 30 left bits
-	shl r11, 30
-	shr r11, 30
+%macro our_vector 0
 
-	or r11, r10
-	mov [r8], r11
+	push rbp
+	mov rbp, rsp
+	pushall
 
+	;; r8 - num of params
+	mov r8, [rbp + 3*8]
+
+	;; r9 - pointer to params addresses array
+	lea rdi, [8*r8]
+	call malloc
+	mov r9, rax
+
+	mov r15, 0
+
+	.malloc_loop:
+	cmp r15, r8
+	je .done
+	;; r10 - current param
+	mov r10, qword [rbp + 4*8 + r15*8]
+	mov rdi, 8
+	call malloc
+	mov [rax], r10
+	mov [r9 + 8*r15], rax
+	inc r15
+	jmp .malloc_loop
+
+	.done:
+	make_lit_vector_runtime r8, r9
+	mov rax, r8
+
+	popall
+	leave
+	ret
+
+%endmacro
+	
+%macro our_set_car 0
+
+  	push rbp
+	mov rbp, rsp
+	pushall
+	
+	;; r10 - num params
+	mov r10, [rbp + 3*8]
+    cmp r10, 2
+    jne ERROR
+    
+    
+	;; r8 - pointer to car pair
+	mov r8, [rbp + 4*8]
+    mov r10, r8
+    TYPE r10
+    cmp r10, T_PAIR
+    jne ERROR
+    DATA_UPPER r8
+    add r8, start_of_data
+    
+	;; r9 - future car
+	mov r9, [rbp + 5*8]
+	
+	mov [r8], r9
+	
+    ;; rax = void
+	mov rax, [L1]
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_set_cdr 0
+
+  	push rbp
+	mov rbp, rsp
+	pushall
+	
+	;; r10 - num params
+	mov r10, [rbp + 3*8]
+    cmp r10, 2
+    jne ERROR
+    
+	;; r8 - pointer to car pair
+	mov r8, [rbp + 4*8]
+    mov r10, r8
+    TYPE r10
+    cmp r10, T_PAIR
+    jne ERROR
+    DATA_LOWER r8
+    add r8, start_of_data
+    
+	;; r9 - future cdr
+	mov r9, [rbp + 5*8]
+	
+	mov [r8], r9
+	
+    ;; rax = void
+	mov rax, [L1]
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_string_set 0
+
+  	push rbp
+	mov rbp, rsp
+	pushall
+	
+	;; r11 - num params
+	mov r11, [rbp + 3*8]
+    cmp r11, 3
+    jne ERROR
+    
+	;; r8 - string, r9 - index, r10 - char , r13 - length
+	mov r8, [rbp + 4*8 + 0*8]
+    mov r12, r8
+    TYPE r12
+    cmp r12, T_STRING
+    jne ERROR
+    
+    mov r13, r8
+    DATA_UPPER r13
+    
+    
+    mov r9, [rbp + 4*8 + 1*8]
+    mov r12, r9
+    TYPE r12
+    cmp r12, T_INTEGER
+    jne ERROR
+    DATA r9
+    cmp r9, r13
+    jge ERROR
+    cmp r9, 0
+    jl ERROR
+    
+    mov r10, [rbp + 4*8 + 2*8]
+    mov r12, r10
+    TYPE r12
+    cmp r12, T_CHAR
+    jne ERROR
+    
+    
+    DATA_LOWER r8
+    add r8, start_of_data
+    DATA r10
+    
+	
+	mov [r8 + r9], r10b
+	
+    ;; rax = void
+	mov rax, [L1]
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_vector_set 0
+
+  	push rbp
+	mov rbp, rsp
+	pushall
+	
+	;; r11 - num params
+	mov r11, [rbp + 3*8]
+    cmp r11, 3
+    jne ERROR
+    
+	;; r8 - vector, r9 - index, r10 - new value , r13 - length, r14 - pointer to location in vector
+	mov r8, [rbp + 4*8 + 0*8]
+    mov r12, r8
+    TYPE r12
+    cmp r12, T_VECTOR
+    jne ERROR
+    
+    mov r13, r8
+    DATA_UPPER r13
+    
+    
+    mov r9, [rbp + 4*8 + 1*8]
+    mov r12, r9
+    TYPE r12
+    cmp r12, T_INTEGER
+    jne ERROR
+    DATA r9
+    cmp r9, r13
+    jge ERROR
+    cmp r9, 0
+    jl ERROR
+    
+    mov r10, [rbp + 4*8 + 2*8]
+    
+    DATA_LOWER r8
+    add r8, start_of_data
+    
+    mov rdi, 8
+    call malloc
+    mov [rax], r10
+	
+	mov [r8 + 8*r9], rax 
+	
+    ;; rax = void
 	mov rax, [L1]
 
 	popall
@@ -2160,6 +2697,271 @@ write_sob_if_not_void:
 
 	.end:
 	make_lit_int_runtime rax
+
+	popall
+	leave
+	ret
+	
+%endmacro
+
+%macro our_apply 0
+
+	push rbp
+	mov rbp, rsp
+
+	mov r8, [rbp + 3*8]
+	cmp r8, 2
+	jne ERROR
+
+	;; r8 - old rbp, r9 - apply ret address 
+	;; r10 - closure, r11 - list of params
+
+	mov r8, [rbp]
+	mov r9, [rbp + 1*8]
+	mov r10, [rbp + 4*8]
+	mov r11, [rbp + 5*8]
+
+	;; r10 - closure code
+	;; rbx - closure env
+
+	mov rbx, r10
+
+	CLOSURE_ENV rbx
+	CLOSURE_CODE r10
+
+	;; r12 - list len, r13 - iterable list
+	mov r12, 0
+	mov r13, r11
+
+	.list_len_loop:
+	mov r14, r13
+	TYPE r14
+	cmp r14, T_NIL
+	je .len_done
+	inc r12
+	CDR r13
+	jmp .list_len_loop
+
+	.len_done:
+
+	mov r13, r11
+
+	;; rcx - pointer to the stack place for the param
+	mov rcx, r12
+	neg rcx
+	dec rcx
+
+	.push_list_params_loop:
+	cmp rcx, -1
+	je .push_done
+	mov r14, r13
+	CAR r14
+	mov [rbp + rcx*8], r14
+	inc rcx
+	CDR r13
+	jmp .push_list_params_loop
+
+	.push_done:
+	mov qword [rbp + rcx*8], 0
+
+	mov rcx, r12
+	neg rcx
+	dec rcx
+	mov r14, -1
+
+	lea rsp, [rsp + rcx*8]
+
+	.override_apply_frame:
+	cmp r14, rcx
+	jl .override_done
+	mov r13, qword [rbp + r14*8]
+	mov [rbp + r14*8 + 7*8], r13
+	dec r14
+	jmp .override_apply_frame
+
+	.override_done:
+
+	;; push new num of params
+	mov [rbp + r14*8 + 7*8], r12
+	dec r14
+
+	;; push closure env
+	mov [rbp + r14*8 + 7*8], rbx
+	dec r14	
+
+	;; push apply ret address
+	mov [rbp + r14*8 + 7*8], r9
+
+	;; update rsp
+	lea rsp, [rbp + r14*8 + 7*8]
+
+	;; update rbp
+	mov rbp, r8
+
+	jmp r10
+
+%endmacro
+
+%macro our_eq 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	mov r8, [rbp + 3*8]
+	cmp r8, 2
+	jne ERROR
+
+	mov r8, [rbp + 4*8]
+	mov r9, [rbp + 5*8]
+
+	mov r10, r8
+	mov r11, r9
+	TYPE r10
+	TYPE r11
+	cmp r10, r11
+	jne .false
+
+	cmp r10, T_SYMBOL
+	jne .regular_eq
+	
+	;; case of symbols - cmp strings
+	push r8
+	push r9
+	call string_cmp
+	add rsp, 2*8
+	cmp rax, 1
+	je .equal
+	jmp .false
+
+	.regular_eq:
+
+	cmp r8, r9
+	je .equal
+
+	.false:
+	mov rax, [L4]
+	jmp .end
+
+	.equal:
+	mov rax, [L3]
+
+	.end:
+	popall
+	leave
+	ret
+
+%endmacro
+
+
+%macro our_string_symbol 0
+
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;; r12 - pointer to curr link
+	mov r12, symbol_table
+
+	;; r9 - string
+	mov r9, [rbp + 4*8]
+
+	;; first link in r8
+	mov r8, [symbol_table]
+
+	cmp r8, 0
+	je .add_symbol
+
+	.loop:
+	;; r10 - pointer to next link, r11 - link string
+	mov r10, r8
+	mov r11, r8
+	DATA_LOWER r10
+	add r10, start_of_data
+	DATA_UPPER r11
+
+	cmp r11, 0
+	je .skip
+
+	add r11, start_of_data
+	mov r11, [r11]
+
+	;; update pointer to curr link
+	mov r12, r10
+
+	push r11
+	push r9
+	call string_cmp
+	pop r9
+	pop r11
+
+	cmp rax, 1
+	je .end
+
+	.skip:
+
+	cmp r10, start_of_data
+	je .add_symbol
+
+	mov r8, [r10]
+	jmp .loop
+
+	.add_symbol:
+	mov rdi, 8
+	call malloc 
+	mov r15, rax
+	mov [r15], r9
+
+	;; rbx - new link
+	mov rbx, r15
+	sub rbx, start_of_data
+	shl rbx, 34
+	or rbx, T_LINK
+	mov rdi, 8
+	call malloc
+	mov [rax], rbx
+	sub rax, start_of_data
+	shl rax, TYPE_BITS
+	or r8, rax
+
+	;; update prev link with a pointer to new link
+	mov [r12], r8
+
+	.end:
+	shr r9, TYPE_BITS
+	shl r9, TYPE_BITS
+	or r9, T_SYMBOL
+
+	mov rax, r9
+
+	popall
+	leave
+	ret
+
+%endmacro
+
+%macro our_symbol_string 0
+	push rbp
+	mov rbp, rsp
+	pushall
+
+	;; r8 - symbol, r9 - type, r10 - n
+	mov r8, [rbp + 4*8]
+	mov r10, [rbp +  3*8]
+	
+	cmp r10, 1
+	jne ERROR
+
+	mov r9, r8
+	TYPE r9
+	cmp r9, T_SYMBOL
+	jne ERROR
+
+	shr r8, TYPE_BITS
+	shl r8, TYPE_BITS
+	or r8, T_STRING 
+
+	mov rax, r8
 
 	popall
 	leave
