@@ -1,68 +1,8 @@
 ;(load "pc.scm")
 
-
-(define <whitespace>
-  (const
-   (lambda (ch)
-     (char<=? ch #\space))))
-
-(define <line-comment>
-    (let ((<end-of-line-comment>
-        (new
-            (*parser (char #\newline))
-            (*parser <end-of-input>)
-            (*disj 2)
-        done)))
-        (new
-            (*parser (char #\;))
-
-            (*parser <any-char>)
-            (*parser <end-of-line-comment>)
-            *diff *star
-
-            (*parser <end-of-line-comment>)
-            (*caten 3)
-        done)))
-
-(define <SexprCommentHelper>
-    (new
-        (*parser (word "#;"))
-        (*delayed (lambda () <sexpr>))
-        (*caten 2)
-    done))
-    
-(define <InfixExpressionHelper>
-    (new
-        (*parser (word "#;"))
-     (*delayed (lambda () <InfixExpression>))
-        (*caten 2)
-    done))
-
-(define <SexprComment>
-  (disj <line-comment>
-	<SexprCommentHelper>))
-
-(define <InfixExpressionComment
-  (disj <line-comment>
-	<InfixExpressionHelper>))
-	
-(define <InfixExpressionSkip>
-  (disj <InfixExpressionComment
-	<whitespace>))
-	
-(define <SexprSkip>
-  (disj <SexprComment>
-	<whitespace>))
-
-
-
-
-
-
 (define <sexpr>
 	(new
-	(*delayed (lambda () <SexprSkip>)) *star
-	;(*delayed (lambda () <WhiteSpace>))	
+	(*delayed (lambda () <CommentsAndSpaces>)) *star
 	(*delayed (lambda () <Boolean>))
 	(*delayed (lambda () <Char>))
 	(*delayed (lambda () <Number>))
@@ -78,31 +18,54 @@
 	(*delayed (lambda () <CBName>))
 	(*delayed (lambda () <InfixExtension>))
 	(*disj 14)
-	;(*delayed (lambda () <WhiteSpace>))
-	(*delayed (lambda () <SexprSkip>)) *star
+	(*delayed (lambda () <CommentsAndSpaces>)) *star
 	(*caten 3)
 	(*pack-with (lambda (c1 s c2) s))
 	done))
 
+(define <whitespace_1>
+  (const
+   (lambda (ch)
+     (char<=? ch #\space))))
+
 (define <PrefixComment>
 	(new
 	(*parser (const (lambda (ch) (char=? ch #\newline))))
-	(*delayed (lambda () <LineComment>))
+	(*delayed (lambda () <lineComment_2>))
 	(*delayed (lambda () <PrefixExprComment>))
 	(*disj 3) *star
 	done))
 
+(define <EOL>
+        (new
+            (*parser (char #\newline))
+            (*parser <end-of-input>)
+            (*disj 2)
+        done))
+
 (define <InfixComment>
 	(new
-	(*delayed (lambda () <LineComment>))
+	(*delayed (lambda () <lineComment_2>))
 	(*delayed (lambda () <InfixExprComment>))
 	(*disj 2) *star
 	done))
 
-(define <LineComment>
+(define <lineComment_1>
+        (new
+            (*parser (char #\;))
+
+            (*parser <any-char>)
+            (*parser <EOL>)
+            *diff *star
+
+            (*parser <EOL>)
+            (*caten 3)
+        done))
+
+(define <lineComment_2>
 	(new
 	(*parser (char #\;))
-	(*delayed (lambda () <WhiteSpace>))
+	(*delayed (lambda () <whitespace_2>))
 	(*delayed (lambda () <any-char>)) 
 	(*parser (const (lambda (ch) (char=? ch #\newline)))) 
 	(*parser <end-of-input>)
@@ -114,6 +77,13 @@
 	(*caten 4)
 	done))
 
+(define <CommentHandler>
+    (new
+        (*parser (word "#;"))
+        (*delayed (lambda () <sexpr>))
+        (*caten 2)
+    done))
+
 (define <newline>
 	(new
 		(*parser (const (lambda (ch) (char=? ch #\newline))))
@@ -122,23 +92,32 @@
 (define <InfixExprComment>
 	(new
 	(*parser (word "#;"))
-	(*delayed (lambda () <WhiteSpace>))
+	(*delayed (lambda () <whitespace_2>))
 	(*delayed (lambda () <InfixExpression>))
 	(*caten 3) 
 	done))
+
+(define <SexprComment>
+  (disj <lineComment_1>
+	<CommentHandler>))
 
 
 (define <PrefixExprComment>
 	(new
 	(*parser (word "#;"))
-	(*delayed (lambda () <WhiteSpace>))
+	(*delayed (lambda () <whitespace_2>))
 	(*parser <sexpr>)
 	(*caten 3) 
 	done))
 
+	
+(define <CommentsAndSpaces>
+  (disj <SexprComment>
+	<whitespace_1>)) 
+
 (define debug (lambda (a) (display a) (newline) a))
 
-(define <WhiteSpace> ; returns empty string
+(define <whitespace_2> ; returns empty string
 	(new 
 	(*parser (const (lambda (ch) (not (char>=? ch #\!))))) *star
 	(*pack (lambda (res) "")) 
@@ -384,9 +363,9 @@
 (define <ProperList>
 	(new
 	(*parser (char #\())
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <sexpr>) 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (s1 s s2) s))
 	*star
@@ -400,18 +379,18 @@
 	(new
 	(*parser (char #\())
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <sexpr>)
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (s1 s s2) s)) 
 	*plus
 
 	(*parser (char #\.))
 	
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <sexpr>)
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (s1 s s2) s)) 
 
@@ -429,9 +408,9 @@
 	(*parser (char #\#))
 	(*parser (char #\())
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <sexpr>)
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (s1 s s2) s))
 	*star
@@ -505,7 +484,7 @@
 (define <InfixExtension>
 	(new
 	(*delayed (lambda () <InfixPrefixExtensionPrefix>))
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*delayed (lambda () <InfixExpression>))
 	(*caten 3)
 	(*pack-with (lambda (p w e) e))
@@ -569,9 +548,9 @@
 
 (define <InfixNeg>
 	(new
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser (char #\-))
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (w1 m w2) m))
 
@@ -595,18 +574,18 @@
 
 (define <InfixAtomic>
 	(new
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <InfixComment>)
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 
 	(*parser <InfixNumber>)
 	(*parser <InfixSymbol>)
 	(*parser <InfixNeg>)
 	(*disj 3)
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <InfixComment>)
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 
 	(*caten 7)
 	(*pack-with (lambda (w1 c1 w2 tomic w3 c2 w4) tomic))
@@ -615,16 +594,16 @@
 (define <InfixSexprEscape>
 	(new
 	
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <PrefixComment>)
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 
 	(*parser <InfixPrefixExtensionPrefix>)
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser <PrefixComment>)
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 
 	(*parser <sexpr>)
@@ -643,17 +622,17 @@
 
 	;(*parser <InfixAtomic>)
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser (char #\())
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (w1 p w2) p))
 
 	(*parser <InfixExpression>)
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser (char #\)))
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (w1 p w2) p))
 
@@ -669,17 +648,17 @@
 ;	(*delayed (lambda () <InfixFuncall>))
 ;	(*disj 2)
 	
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser (char #\[))
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (w1 p w2) p))
 
 	(*parser <InfixExpression>)
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser (char #\]))
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (w1 p w2) p))
 
@@ -738,17 +717,17 @@
 	(*parser <InfixArrayGet>)
 	(*disj 2)
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser (char #\())
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (w1 p w2) p))
 
 	(*delayed (lambda () <InfixArgList>))
 
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*parser (char #\)))
-	(*parser <WhiteSpace>)
+	(*parser <whitespace_2>)
 	(*caten 3)
 	(*pack-with (lambda (w1 p w2) p))
 
