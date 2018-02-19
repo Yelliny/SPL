@@ -51,7 +51,7 @@
 (define gen-prolog
 	(lambda ()
 		(string-append
-		"%include \"scheme.s\"\n\n" 
+		"%include \"project/scheme.s\"\n\n" 
 		"\nsection .data\n"
 			"msg: db \"MOR TUR\", 0\n"
 			"format_s: db \"%s\", 10, 0\n"
