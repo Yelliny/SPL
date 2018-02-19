@@ -131,7 +131,7 @@
 			(let ((loc-lambda (number->string (caddr pe)))
 				(loc-param (number->string (cadddr pe))))
 				(string-append
-					"# ----- gen-box-get -----\n"
+					"# ----- gen-box-get bvar " loc-lambda " " loc-param "-----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
 					"mov r8, [rbp + 2*8]\n"
@@ -142,7 +142,7 @@
 					))
 			(let ((loc (number->string (caddr pe))))
 				(string-append
-					"# ----- gen-box-get -----\n"
+					"# ----- gen-box-get pvar " loc " -----\n"
 					"box_get_" (number->string (get-inc-counter)) ":\n"
 					"push r8\n"
 					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
@@ -179,6 +179,7 @@
 					"mov r8, [rbp + 4*8 + 8*" loc "]\n"
 					"mov [r8], rax\n"
 					"mov rax, [" void-labl "]\n\n"
+					"pop r8\n"
 					))
 			)))
 
