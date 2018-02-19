@@ -1045,7 +1045,7 @@ write_sob_if_not_void:
 	TYPE rbx
 	cmp rbx, T_INTEGER
 	jne .fraction
-	DATA_LOWER r8
+	DATA r8
 	mov r9, 1
 	jmp .after_all
 
@@ -1301,7 +1301,7 @@ write_sob_if_not_void:
     TYPE rbx
     cmp rbx, T_INTEGER
     jne .fraction
-    DATA_LOWER r8
+    DATA r8
     mov r9, 1
     jmp .after_all
     
@@ -1391,7 +1391,7 @@ write_sob_if_not_void:
     TYPE rbx
     cmp rbx, T_INTEGER
     jne .fraction_0
-    DATA_LOWER r10
+    DATA r10
     mov r11, 1
     jmp .loop
     
@@ -1417,7 +1417,7 @@ write_sob_if_not_void:
     cmp rbx, T_INTEGER
     jne .fraction
     mov r9, r8
-    DATA_LOWER r9
+    DATA r9
     mov r8, 1
     jmp .after_all
     
@@ -1628,7 +1628,7 @@ write_sob_if_not_void:
 	TYPE rbx
 	cmp rbx, T_INTEGER
 	jne .fraction_0
-	DATA_LOWER r10
+	DATA r10
 	mov r11, 1
 	jmp .loop
 	
@@ -1648,7 +1648,7 @@ write_sob_if_not_void:
 	TYPE rbx
 	cmp rbx, T_INTEGER
 	jne .fraction
-	DATA_LOWER r8
+	DATA r8
 	mov r9, 1
 	jmp .after_all
 
@@ -1741,7 +1741,7 @@ write_sob_if_not_void:
 	TYPE rbx
 	cmp rbx, T_INTEGER
 	jne .fraction_0
-	DATA_LOWER r10
+	DATA r10
 	mov r11, 1
 	jmp .loop
 	
@@ -1761,7 +1761,7 @@ write_sob_if_not_void:
 	TYPE rbx
 	cmp rbx, T_INTEGER
 	jne .fraction
-	DATA_LOWER r8
+	DATA r8
 	mov r9, 1
 	jmp .after_all
 
@@ -1854,7 +1854,7 @@ write_sob_if_not_void:
 	TYPE rbx
 	cmp rbx, T_INTEGER
 	jne .fraction_0
-	DATA_LOWER r10
+	DATA r10
 	mov r11, 1
 	jmp .loop
 	
@@ -1874,7 +1874,7 @@ write_sob_if_not_void:
 	TYPE rbx
 	cmp rbx, T_INTEGER
 	jne .fraction
-	DATA_LOWER r8
+	DATA r8
 	mov r9, 1
 	jmp .after_all
 
